@@ -1,5 +1,6 @@
 <manifest xmlns:android=
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/><uses-permissionandroid:name="android.permission.READ_EXTERNAL_STORAGE"android:maxSdkVersion+"32"/>"http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permissionandroid:name="android.permission.READ_EXTERNAL_STORAGE"android:maxSdkVersion+"32"/>"http://schemas.android.com/apk/res/android">
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:label="ФотоПорядок" android:allowBackup="false">
         <activity android:name=".MainActivity" android:exported="true">
