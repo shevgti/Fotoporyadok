@@ -20,6 +20,7 @@ import java.util.Locale
 
 data class Photo(val uri: Uri, val date: Long, val name: String)
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val requestPermission = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
