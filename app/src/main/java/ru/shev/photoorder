@@ -1,4 +1,4 @@
-package ru.shev.photoorder
+package ru.shev.photoorder/MainActivity.kt
 
 import android.os.Bundle
 import android.provider.MediaStore
