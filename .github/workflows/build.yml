@@ -12,12 +12,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Prepare release signing key
+      - name: Prepare and verify release signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fotoporyadok-release.jks"
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fotoporyadok-release.jks"
           echo "KEYSTORE_FILE=$RUNNER_TEMP/fotoporyadok-release.jks" >> "$GITHUB_ENV"
+          if keytool -list -keystore "$RUNNER_TEMP/fotoporyadok-release.jks" -storepass:env KEYSTORE_PASSWORD >/dev/null 2>&1; then
+            echo "Release keystore file and store password verified."
+          else
+            echo "::error::Release keystore could not be opened with KEYSTORE_PASSWORD. Check the stored keystore/password pair; no secret values were printed."
+            exit 1
+          fi
       - name: Build debug and signed release APKs
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
