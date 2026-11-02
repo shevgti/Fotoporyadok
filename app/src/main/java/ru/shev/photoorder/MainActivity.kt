@@ -252,7 +252,6 @@ private fun PhotoOrderScreen() {
                                 if (item.isVideo) openVideo(context, item.uri)
                                 else selectedPhoto = item
                             },
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column {
                                 if (item.isVideo) {
