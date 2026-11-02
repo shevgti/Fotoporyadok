@@ -32,6 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -75,8 +76,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFF9B5CFF),
+                    onPrimary = Color.White,
+                    secondary = Color(0xFF42C8FF),
+                    background = Color(0xFF080B20),
+                    surface = Color(0xFF151A35),
+                    onSurface = Color(0xFFF7F4FF)
+                )
+            ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF080B20)) {
                     PhotoOrderScreen()
                 }
             }
@@ -127,7 +137,7 @@ private fun PhotoOrderScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F4F0))
+            .background(Color(0xFF080B20))
             .padding(horizontal = 16.dp)
     ) {
         Row(
@@ -135,21 +145,31 @@ private fun PhotoOrderScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("ФотоПорядок", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(15.dp))
+                        .background(Color(0xFF5427D8))
+                        .padding(horizontal = 11.dp, vertical = 8.dp)
+                ) { Text("◉", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold) }
+                Column {
+                    Text("ФотоПорядок", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
+                }
+            }
             TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
-                Text("Обновить")
+                Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
             }
         }
         Text(
             "Фото и видео на телефоне — в удобном порядке",
-            color = Color(0xFF66615B),
+            color = Color(0xFFAAA6C7),
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
         if (!hasPermission) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -163,12 +183,15 @@ private fun PhotoOrderScreen() {
                 }
             }
         } else {
-            Text(
-                "Всего: ${media.size}  ·  Фото: ${media.count { !it.isVideo }}  ·  Видео: ${media.count { it.isVideo }}",
-                color = Color(0xFF5F5A54),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            TabRow(selectedTabIndex = selectedTab) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), Color(0xFF5427D8))
+                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF174E9D))
+                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF7B2DBB))
+            }
+            TabRow(selectedTabIndex = selectedTab, containerColor = Color(0xFF11152E), contentColor = Color(0xFFB99AFF)) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
                     Tab(
                         selected = selectedTab == index,
@@ -223,6 +246,8 @@ private fun PhotoOrderScreen() {
                 ) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
                         Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
                             modifier = Modifier.clickable {
                                 if (item.isVideo) openVideo(context, item.uri)
                                 else selectedPhoto = item
@@ -235,10 +260,10 @@ private fun PhotoOrderScreen() {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(1f)
-                                            .background(Color(0xFFE6E1DA)),
+                                            .background(Color(0xFF24234D)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFF514B45))
+                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFFBDB3FF))
                                     }
                                 } else {
                                     AsyncImage(
@@ -247,7 +272,7 @@ private fun PhotoOrderScreen() {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(1f)
-                                            .background(Color(0xFFE8E4DE)),
+                                            .background(Color(0xFF24234D)),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
@@ -255,7 +280,7 @@ private fun PhotoOrderScreen() {
                                     Text(item.name, maxLines = 1, fontWeight = FontWeight.Medium)
                                     Text(
                                         formatDate(item.dateSeconds),
-                                        color = Color(0xFF77716A),
+                                        color = Color(0xFF8E8AAE),
                                         fontSize = 12.sp
                                     )
                                 }
@@ -290,11 +315,28 @@ private fun PhotoOrderScreen() {
 }
 
 @Composable
+private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(label, color = Color(0xFFAAA6C7), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = accent, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
     TextButton(onClick = onClick) {
         Text(
             text = if (selected) "✓ $label" else label,
-            color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF625D56),
+            color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFFAAA6C7),
             fontSize = 12.sp
         )
     }
