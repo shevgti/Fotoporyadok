@@ -3,6 +3,7 @@ package ru.shev.photoorder
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -31,10 +32,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,13 +62,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class PhotoItem(
+private data class MediaItem(
     val uri: Uri,
     val name: String,
-    val dateSeconds: Long
+    val dateSeconds: Long,
+    val isVideo: Boolean
 )
 
-private enum class PhotoSort { NEWEST, OLDEST, NAME }
+private enum class MediaSort { NEWEST, OLDEST, NAME }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,36 +87,40 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PhotoOrderScreen() {
     val context = LocalContext.current
-    var photos by remember { mutableStateOf<List<PhotoItem>>(emptyList()) }
-    var hasPermission by remember { mutableStateOf(hasPhotoPermission(context)) }
+    var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
+    var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
-    var sort by remember { mutableStateOf(PhotoSort.NEWEST) }
-    var selectedPhoto by remember { mutableStateOf<PhotoItem?>(null) }
+    var sort by remember { mutableStateOf(MediaSort.NEWEST) }
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedPhoto by remember { mutableStateOf<MediaItem?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        hasPermission = hasPhotoPermission(context)
+        hasPermission = hasMediaPermission(context)
     }
 
     LaunchedEffect(hasPermission, refreshKey) {
         if (hasPermission) {
             loading = true
-            photos = withContext(Dispatchers.IO) { loadPhotos(context) }
+            media = withContext(Dispatchers.IO) { loadMedia(context) }
             loading = false
         }
     }
 
-    val visiblePhotos = remember(photos, search, sort) {
-        val filtered = photos.filter {
-            it.name.contains(search.trim(), ignoreCase = true)
-        }
+    val tabMedia = when (selectedTab) {
+        1 -> media.filter { !it.isVideo }
+        2 -> media.filter { it.isVideo }
+        else -> media
+    }
+    val visibleMedia = remember(tabMedia, search, sort) {
+        val filtered = tabMedia.filter { it.name.contains(search.trim(), ignoreCase = true) }
         when (sort) {
-            PhotoSort.NEWEST -> filtered.sortedByDescending { it.dateSeconds }
-            PhotoSort.OLDEST -> filtered.sortedBy { it.dateSeconds }
-            PhotoSort.NAME -> filtered.sortedBy { it.name.lowercase(Locale.ROOT) }
+            MediaSort.NEWEST -> filtered.sortedByDescending { it.dateSeconds }
+            MediaSort.OLDEST -> filtered.sortedBy { it.dateSeconds }
+            MediaSort.NAME -> filtered.sortedBy { it.name.lowercase(Locale.ROOT) }
         }
     }
 
@@ -134,9 +141,9 @@ private fun PhotoOrderScreen() {
             }
         }
         Text(
-            "Все фотографии телефона — в удобном порядке",
+            "Фото и видео на телефоне — в удобном порядке",
             color = Color(0xFF66615B),
-            modifier = Modifier.padding(bottom = 14.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
         if (!hasPermission) {
@@ -148,83 +155,106 @@ private fun PhotoOrderScreen() {
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Разрешите доступ к фотографиям", fontWeight = FontWeight.SemiBold)
-                    Text("ФотоПорядок показывает изображения, которые уже хранятся на телефоне. Файлы не отправляются в интернет и не удаляются.")
-                    Button(onClick = { permissionLauncher.launch(requiredPhotoPermissions()) }) {
-                        Text("Выбрать фотографии")
+                    Text("Разрешите доступ к фото и видео", fontWeight = FontWeight.SemiBold)
+                    Text("Приложение показывает медиафайлы, которые уже хранятся на телефоне. Оно ничего не загружает в интернет и не удаляет.")
+                    Button(onClick = { permissionLauncher.launch(requiredMediaPermissions()) }) {
+                        Text("Выбрать фото и видео")
                     }
                 }
             }
         } else {
+            Text(
+                "Всего: ${media.size}  ·  Фото: ${media.count { !it.isVideo }}  ·  Видео: ${media.count { it.isVideo }}",
+                color = Color(0xFF5F5A54),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            TabRow(selectedTabIndex = selectedTab) {
+                listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(label) }
+                    )
+                }
+            }
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 singleLine = true,
                 label = { Text("Поиск по названию") }
             )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                SortButton("Сначала новые", sort == PhotoSort.NEWEST) { sort = PhotoSort.NEWEST }
-                SortButton("Сначала старые", sort == PhotoSort.OLDEST) { sort = PhotoSort.OLDEST }
-                SortButton("По имени", sort == PhotoSort.NAME) { sort = PhotoSort.NAME }
+                SortButton("Новые", sort == MediaSort.NEWEST) { sort = MediaSort.NEWEST }
+                SortButton("Старые", sort == MediaSort.OLDEST) { sort = MediaSort.OLDEST }
+                SortButton("По имени", sort == MediaSort.NAME) { sort = MediaSort.NAME }
             }
             Text(
                 when {
-                    loading -> "Загружаем фотографии…"
-                    search.isNotBlank() -> "Найдено: ${visiblePhotos.size} из ${photos.size}"
-                    else -> "Фотографий: ${photos.size}"
+                    loading -> "Обновляем медиатеку…"
+                    search.isNotBlank() -> "Найдено: ${visibleMedia.size}"
+                    else -> "Показано: ${visibleMedia.size}"
                 },
                 color = Color(0xFF5F5A54),
-                modifier = Modifier.padding(bottom = 10.dp)
+                fontSize = 13.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            if (loading && photos.isEmpty()) {
-                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (visiblePhotos.isEmpty()) {
+            if (visibleMedia.isEmpty()) {
                 Box(
                     Modifier.fillMaxWidth().weight(1f).padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (search.isNotBlank()) "Ничего не найдено. Попробуйте другое название."
-                        else "На телефоне пока нет доступных фотографий."
+                        if (loading) "Загружаем…"
+                        else if (search.isNotBlank()) "Ничего не найдено. Попробуйте другое название."
+                        else "В этой категории пока нет файлов."
                     )
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(140.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(visiblePhotos, key = { it.uri.toString() }) { photo ->
+                    items(visibleMedia, key = { it.uri.toString() }) { item ->
                         Card(
-                            modifier = Modifier.clickable { selectedPhoto = photo },
+                            modifier = Modifier.clickable {
+                                if (item.isVideo) openVideo(context, item.uri)
+                                else selectedPhoto = item
+                            },
                             colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column {
-                                AsyncImage(
-                                    model = photo.uri,
-                                    contentDescription = photo.name,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f)
-                                        .background(Color(0xFFE8E4DE)),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Column(modifier = Modifier.padding(9.dp)) {
-                                    Text(
-                                        photo.name,
-                                        maxLines = 1,
-                                        fontWeight = FontWeight.Medium
+                                if (item.isVideo) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(1f)
+                                            .background(Color(0xFFE6E1DA)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFF514B45))
+                                    }
+                                } else {
+                                    AsyncImage(
+                                        model = item.uri,
+                                        contentDescription = item.name,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(1f)
+                                            .background(Color(0xFFE8E4DE)),
+                                        contentScale = ContentScale.Crop
                                     )
+                                }
+                                Column(modifier = Modifier.padding(9.dp)) {
+                                    Text(item.name, maxLines = 1, fontWeight = FontWeight.Medium)
                                     Text(
-                                        formatDate(photo.dateSeconds),
+                                        formatDate(item.dateSeconds),
                                         color = Color(0xFF77716A),
                                         fontSize = 12.sp
                                     )
@@ -237,22 +267,22 @@ private fun PhotoOrderScreen() {
         }
     }
 
-    selectedPhoto?.let { photo ->
+    selectedPhoto?.let { item ->
         AlertDialog(
             onDismissRequest = { selectedPhoto = null },
             confirmButton = {
                 TextButton(onClick = { selectedPhoto = null }) { Text("Закрыть") }
             },
-            title = { Text(photo.name, maxLines = 1) },
+            title = { Text(item.name, maxLines = 1) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AsyncImage(
-                        model = photo.uri,
-                        contentDescription = photo.name,
+                        model = item.uri,
+                        contentDescription = item.name,
                         modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Fit
                     )
-                    Text("Дата: ${formatDate(photo.dateSeconds)}")
+                    Text("Дата: ${formatDate(item.dateSeconds)}")
                 }
             }
         )
@@ -270,55 +300,81 @@ private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-private fun requiredPhotoPermissions(): Array<String> = when {
+private fun requiredMediaPermissions(): Array<String> = when {
     Build.VERSION.SDK_INT >= 34 -> arrayOf(
         Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO,
         Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
     )
-    Build.VERSION.SDK_INT >= 33 -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+    Build.VERSION.SDK_INT >= 33 -> arrayOf(
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO
+    )
     else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
 }
 
-private fun hasPhotoPermission(context: Context): Boolean {
-    return requiredPhotoPermissions().any {
+private fun hasMediaPermission(context: Context): Boolean {
+    return requiredMediaPermissions().any {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 }
 
-private fun loadPhotos(context: Context): List<PhotoItem> {
-    val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+private fun loadMedia(context: Context): List<MediaItem> {
+    val collection = MediaStore.Files.getContentUri("external")
     val projection = arrayOf(
-        MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DISPLAY_NAME,
-        MediaStore.Images.Media.DATE_ADDED,
-        MediaStore.Images.Media.DATE_TAKEN
+        MediaStore.Files.FileColumns._ID,
+        MediaStore.Files.FileColumns.MEDIA_TYPE,
+        MediaStore.Files.FileColumns.DISPLAY_NAME,
+        MediaStore.Files.FileColumns.DATE_ADDED,
+        MediaStore.MediaColumns.DATE_TAKEN
     )
-    val result = mutableListOf<PhotoItem>()
+    val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? OR ${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
+    val selectionArgs = arrayOf(
+        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
+        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
+    )
+    val result = mutableListOf<MediaItem>()
+
     context.contentResolver.query(
         collection,
         projection,
-        null,
-        null,
-        "${MediaStore.Images.Media.DATE_ADDED} DESC"
+        selection,
+        selectionArgs,
+        "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
     )?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-        val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-        val takenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+        val typeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+        val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+        val takenColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
-            val name = cursor.getString(nameColumn) ?: "Фото"
+            val isVideo = cursor.getInt(typeColumn) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
+            val taken = if (takenColumn >= 0) cursor.getLong(takenColumn) else 0L
             val added = cursor.getLong(addedColumn)
-            val takenMillis = cursor.getLong(takenColumn)
-            val dateSeconds = if (takenMillis > 0) takenMillis / 1000 else added
-            result += PhotoItem(
-                uri = ContentUris.withAppendedId(collection, id),
-                name = name,
-                dateSeconds = dateSeconds
+            val baseUri = if (isVideo) {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            } else {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            }
+            result += MediaItem(
+                uri = ContentUris.withAppendedId(baseUri, id),
+                name = cursor.getString(nameColumn) ?: if (isVideo) "Видео" else "Фото",
+                dateSeconds = if (taken > 0) taken / 1000 else added,
+                isVideo = isVideo
             )
         }
     }
     return result
+}
+
+private fun openVideo(context: Context, uri: Uri) {
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "video/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching { context.startActivity(intent) }
 }
 
 private fun formatDate(seconds: Long): String =
