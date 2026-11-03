@@ -80,6 +80,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -387,35 +388,42 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 if (showThemePicker) {
                     Text("Выбери оформление", modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 8.dp), color = palette.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 430.dp).padding(horizontal = 10.dp),
-                        contentPadding = PaddingValues(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        columns = GridCells.Fixed(5),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 190.dp).padding(horizontal = 8.dp),
+                        contentPadding = PaddingValues(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         items(appThemes, key = { it.id }) { theme ->
                             Column(
-                                modifier = Modifier.fillMaxWidth().height(112.dp)
-                                    .clip(SlantedButtonShape())
-                                    .background(Brush.verticalGradient(listOf(theme.backgroundEnd, theme.background)))
-                                    .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.62f)
+                                modifier = Modifier.fillMaxWidth().height(78.dp)
+                                    .shadow(if (themeId == theme.id) 8.dp else 3.dp, RoundedCornerShape(11.dp))
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .background(Brush.linearGradient(listOf(theme.secondary, theme.primary, theme.background)))
+                                    .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.28f)
                                     .clickable { onThemeChange(theme.id) }
-                                    .padding(horizontal = 9.dp, vertical = 8.dp),
+                                    .padding(horizontal = 4.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text((theme.id + 1).toString().padStart(2, '0') + " · " + theme.name, color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        listOf(theme.primary, theme.secondary, theme.accent).forEach { shade ->
-                                            Box(Modifier.weight(1f).height(6.dp).clip(SlantedButtonShape()).background(shade))
-                                        }
-                                    }
-                                }
-                                if (themeId == theme.id) Text("✓ Выбрано", color = theme.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text((theme.id + 1).toString().padStart(2, '0'), color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(Brush.horizontalGradient(listOf(theme.primary, theme.secondary, theme.accent))))
+                                if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
+                    Text("Нажми на цвет, чтобы применить тему", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
                     TextButton(onClick = { showThemePicker = false }, modifier = Modifier.align(Alignment.End).padding(end = 12.dp)) { Text("Готово", color = palette.accent) }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                HorizontalDivider(color = palette.muted.copy(alpha = 0.25f), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                Text("ФотоПорядок  •  " + BuildConfig.VERSION_NAME, modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp), color = palette.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.weight(1f).shadow(4.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary))).clickable { scope.launch { drawerState.close() }; checkingUpdate = true; scope.launch { try { updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE); if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия." else showUpdateDialog = true } catch (error: Exception) { updateMessage = "Не удалось проверить обновление: " + (error.message ?: "ошибка сети") } finally { checkingUpdate = false } } }.padding(9.dp), contentAlignment = Alignment.Center) {
+                        Text("↻ Обновление", color = palette.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                    Box(modifier = Modifier.weight(1f).shadow(4.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(palette.card).clickable { scope.launch { drawerState.close() } }.padding(9.dp), contentAlignment = Alignment.Center) {
+                        Text("ⓘ О приложении", color = palette.text, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
                 }
             }
         }
