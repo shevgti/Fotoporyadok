@@ -554,11 +554,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
 
     if (showThemePicker) {
         ThemeChoiceDialog(
-            selectedId = selectedThemeId,
-            onSelect = { id ->
-                selectedThemeId = id
-                context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).edit().putInt("theme_id", id).apply()
-            },
+            selectedId = themeId,
+            onSelect = onThemeChange,
             onDismiss = { showThemePicker = false }
         )
     }
