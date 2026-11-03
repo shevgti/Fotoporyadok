@@ -73,9 +73,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
@@ -112,26 +114,31 @@ private data class AppTheme(
 
 private val appThemes = listOf(
     AppTheme(0, "Классический синий", Color(0xFF071A35), Color(0xFF123F73), Color(0xFF102B4D), Color(0xFF173B63), Color(0xFF087BFF), Color(0xFF49C8FF), Color(0xFF8BD9FF), Color(0xFF9BB8D5), Color(0xFFF4FAFF), Color.White),
-    AppTheme(1, "Весенняя свежесть", Color(0xFF092414), Color(0xFF286B35), Color(0xFF143B23), Color(0xFF1D4C2B), Color(0xFF279447), Color(0xFF9FE870), Color(0xFFD4F6A5), Color(0xFFB7D5B4), Color(0xFFF4FFF0), Color.White),
-    AppTheme(2, "Летнее солнце", Color(0xFF4A2607), Color(0xFFE99A16), Color(0xFF74400A), Color(0xFF96510B), Color(0xFFFFC02E), Color(0xFFFFE17A), Color(0xFFFFD46B), Color(0xFFE9D1A5), Color(0xFFFFFAE9), Color(0xFF402000)),
-    AppTheme(3, "Осенний уют", Color(0xFF351308), Color(0xFF9A3D13), Color(0xFF54220F), Color(0xFF713016), Color(0xFFCA571B), Color(0xFFFFA34A), Color(0xFFFFC078), Color(0xFFD8B49A), Color(0xFFFFF4E8), Color.White),
-    AppTheme(4, "Зимняя сказка", Color(0xFF0A2348), Color(0xFF7FBDEB), Color(0xFF183A60), Color(0xFF244E78), Color(0xFF9CCFF8), Color(0xFFE3F5FF), Color(0xFFBDE7FF), Color(0xFFB5D1E7), Color(0xFFF7FCFF), Color(0xFF15304D)),
-    AppTheme(5, "Тёмная классика", Color(0xFF080B12), Color(0xFF242B38), Color(0xFF171D28), Color(0xFF222B39), Color(0xFF52647C), Color(0xFFD5B66D), Color(0xFFE8D49B), Color(0xFF9AA7B8), Color(0xFFF4F6FA), Color(0xFF10151D)),
-    AppTheme(6, "Розовый закат", Color(0xFF35102D), Color(0xFFB33F75), Color(0xFF571B46), Color(0xFF742653), Color(0xFFE45D9B), Color(0xFFFFB0D0), Color(0xFFFFD0E2), Color(0xFFE1B6CD), Color(0xFFFFF5FA), Color(0xFF47142F)),
-    AppTheme(7, "Бирюзовый бриз", Color(0xFF033D4B), Color(0xFF08A6B5), Color(0xFF075563), Color(0xFF0A6878), Color(0xFF12C5D2), Color(0xFF9AF4ED), Color(0xFF8CEFE8), Color(0xFFA9D8D9), Color(0xFFF0FFFF), Color(0xFF00343D)),
-    AppTheme(8, "Серебристый", Color(0xFF202A38), Color(0xFF8495A8), Color(0xFF344252), Color(0xFF46576A), Color(0xFFB7C5D3), Color(0xFFE8EEF4), Color(0xFFD8E2EB), Color(0xFFBBC7D2), Color(0xFFF8FBFF), Color(0xFF24313F)),
-    AppTheme(9, "Золотая осень", Color(0xFF34200A), Color(0xFFB87518), Color(0xFF50320E), Color(0xFF704515), Color(0xFFD38A20), Color(0xFFFFD16A), Color(0xFFFFE3A1), Color(0xFFD9C29A), Color(0xFFFFF8E8), Color(0xFF3A2408)),
-    AppTheme(10, "Морской стиль", Color(0xFF032C45), Color(0xFF087E9D), Color(0xFF08445E), Color(0xFF0B5873), Color(0xFF078EAE), Color(0xFF70D8E8), Color(0xFFA4ECF0), Color(0xFFA8CED8), Color(0xFFF0FCFF), Color(0xFF063143)),
-    AppTheme(11, "Лесной уют", Color(0xFF0B2118), Color(0xFF2E5736), Color(0xFF173526), Color(0xFF214633), Color(0xFF367447), Color(0xFF9ACB79), Color(0xFFC5E7A8), Color(0xFFB4CDB5), Color(0xFFF3FFF3), Color.White),
-    AppTheme(12, "Каменные горы", Color(0xFF202B39), Color(0xFF62758A), Color(0xFF344354), Color(0xFF43566B), Color(0xFF728DA8), Color(0xFFC4D4E5), Color(0xFFE0EAF4), Color(0xFFBAC8D5), Color(0xFFF6FAFF), Color(0xFF172331)),
-    AppTheme(13, "Цветущий сад", Color(0xFF4B183B), Color(0xFFE28AB4), Color(0xFF68244F), Color(0xFF82305F), Color(0xFFE878AC), Color(0xFFFFC8E0), Color(0xFFFFD9EA), Color(0xFFE5B8CE), Color(0xFFFFF5FA), Color(0xFF4D1A37)),
-    AppTheme(14, "Песчаный берег", Color(0xFF51300E), Color(0xFFD7A34B), Color(0xFF704519), Color(0xFF8A5A25), Color(0xFFE1A94C), Color(0xFFFFE0A1), Color(0xFFFFE9BE), Color(0xFFE1CBA7), Color(0xFFFFFAEF), Color(0xFF43280D)),
-    AppTheme(15, "Ночной город", Color(0xFF090B31), Color(0xFF322078), Color(0xFF171849), Color(0xFF24245F), Color(0xFF533DDA), Color(0xFF54B7FF), Color(0xFF9B8CFF), Color(0xFFB3B4D8), Color(0xFFF4F3FF), Color.White),
-    AppTheme(16, "Северное сияние", Color(0xFF042B35), Color(0xFF087F78), Color(0xFF0B4148), Color(0xFF10575A), Color(0xFF00B9A7), Color(0xFF8DF5D1), Color(0xFF72E9D5), Color(0xFFA8D6D0), Color(0xFFF0FFFC), Color(0xFF003B3A)),
-    AppTheme(17, "Кофейный стиль", Color(0xFF24140D), Color(0xFF754322), Color(0xFF3C2419), Color(0xFF543322), Color(0xFFA86A3D), Color(0xFFE2B77E), Color(0xFFF0D1A5), Color(0xFFD0B7A1), Color(0xFFFFF7EF), Color(0xFF2C1A10)),
-    AppTheme(18, "Мятный стиль", Color(0xFF0B3D37), Color(0xFF72CDB2), Color(0xFF14564C), Color(0xFF1D6B5D), Color(0xFF4DC5A6), Color(0xFFB6F0D9), Color(0xFFD2F8E8), Color(0xFFB1DCD0), Color(0xFFF2FFFA), Color(0xFF073C33)),
-    AppTheme(19, "Индиго-ночь", Color(0xFF0A103B), Color(0xFF3A267B), Color(0xFF171C4E), Color(0xFF252B67), Color(0xFF4536C8), Color(0xFFB5A5FF), Color(0xFFD2C8FF), Color(0xFFB9B8E0), Color(0xFFF7F5FF), Color.White)
+    AppTheme(1, "Весенняя зелень", Color(0xFF092414), Color(0xFF286B35), Color(0xFF143B23), Color(0xFF1D4C2B), Color(0xFF279447), Color(0xFF9FE870), Color(0xFFD4F6A5), Color(0xFFB7D5B4), Color(0xFFF4FFF0), Color.White),
+    AppTheme(2, "Солнечное золото", Color(0xFF4A2607), Color(0xFFE99A16), Color(0xFF74400A), Color(0xFF96510B), Color(0xFFFFC02E), Color(0xFFFFE17A), Color(0xFFFFD46B), Color(0xFFE9D1A5), Color(0xFFFFFAE9), Color(0xFF402000)),
+    AppTheme(3, "Ледяная свежесть", Color(0xFF0A2348), Color(0xFF7FBDEB), Color(0xFF183A60), Color(0xFF244E78), Color(0xFF9CCFF8), Color(0xFFE3F5FF), Color(0xFFBDE7FF), Color(0xFFB5D1E7), Color(0xFFF7FCFF), Color(0xFF15304D)),
+    AppTheme(4, "Графитовая ночь", Color(0xFF080B12), Color(0xFF242B38), Color(0xFF171D28), Color(0xFF222B39), Color(0xFF52647C), Color(0xFFD5B66D), Color(0xFFE8D49B), Color(0xFF9AA7B8), Color(0xFFF4F6FA), Color(0xFF10151D)),
+    AppTheme(5, "Розовый сад", Color(0xFF35102D), Color(0xFFB33F75), Color(0xFF571B46), Color(0xFF742653), Color(0xFFE45D9B), Color(0xFFFFB0D0), Color(0xFFFFD0E2), Color(0xFFE1B6CD), Color(0xFFFFF5FA), Color(0xFF47142F)),
+    AppTheme(6, "Бирюзовая лагуна", Color(0xFF033D4B), Color(0xFF08A6B5), Color(0xFF075563), Color(0xFF0A6878), Color(0xFF12C5D2), Color(0xFF9AF4ED), Color(0xFF8CEFE8), Color(0xFFA9D8D9), Color(0xFFF0FFFF), Color(0xFF00343D)),
+    AppTheme(7, "Фиолетовый вечер", Color(0xFF090B31), Color(0xFF322078), Color(0xFF171849), Color(0xFF24245F), Color(0xFF533DDA), Color(0xFFB5A5FF), Color(0xFF9B8CFF), Color(0xFFB3B4D8), Color(0xFFF4F3FF), Color.White),
+    AppTheme(8, "Кофейное тепло", Color(0xFF24140D), Color(0xFF754322), Color(0xFF3C2419), Color(0xFF543322), Color(0xFFA86A3D), Color(0xFFE2B77E), Color(0xFFF0D1A5), Color(0xFFD0B7A1), Color(0xFFFFF7EF), Color(0xFF2C1A10)),
+    AppTheme(9, "Северное сияние", Color(0xFF042B35), Color(0xFF087F78), Color(0xFF0B4148), Color(0xFF10575A), Color(0xFF00B9A7), Color(0xFF8DF5D1), Color(0xFF72E9D5), Color(0xFFA8D6D0), Color(0xFFF0FFFC), Color(0xFF003B3A))
 )
+
+
+private fun themeWallpaperRes(id: Int): Int = when (id) {
+    0 -> R.drawable.theme_wallpaper_01
+    1 -> R.drawable.theme_wallpaper_02
+    2 -> R.drawable.theme_wallpaper_03
+    3 -> R.drawable.theme_wallpaper_04
+    4 -> R.drawable.theme_wallpaper_05
+    5 -> R.drawable.theme_wallpaper_06
+    6 -> R.drawable.theme_wallpaper_07
+    7 -> R.drawable.theme_wallpaper_08
+    8 -> R.drawable.theme_wallpaper_09
+    9 -> R.drawable.theme_wallpaper_10
+    else -> R.drawable.theme_wallpaper_01
+}
 
 private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.compose.ui.graphics.Shape {
     override fun createOutline(
@@ -168,6 +175,7 @@ private fun ThemeChoiceDialog(selectedId: Int, onSelect: (Int) -> Unit, onDismis
                         modifier = Modifier.fillMaxWidth()
                             .clip(SlantedButtonShape())
                             .background(Brush.verticalGradient(listOf(theme.backgroundEnd, theme.background)))
+                            .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.72f)
                             .clickable { onSelect(theme.id) }
                             .padding(horizontal = 10.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(7.dp)
@@ -195,7 +203,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var selectedThemeId by remember {
-                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).let { if (it == 3) 0 else it.coerceIn(0, 19) })
+                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).let { oldId -> when (oldId) { 0 -> 0; 1 -> 1; 2, 9, 14 -> 2; 4 -> 3; 5, 8, 12 -> 4; 6, 13 -> 5; 7, 10, 18 -> 6; 15, 19 -> 7; 17 -> 8; 16 -> 9; else -> 0 } })
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
@@ -324,6 +332,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(palette.backgroundEnd, palette.background)))
+            .paint(painterResource(themeWallpaperRes(themeId)), contentScale = ContentScale.Crop, alpha = 0.16f)
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
