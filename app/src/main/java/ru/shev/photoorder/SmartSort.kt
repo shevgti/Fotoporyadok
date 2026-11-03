@@ -95,7 +95,7 @@ internal fun SmartSortPage(
     }
     selected?.let { folder ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text(folder.name) },
-            text = { Text(folder.items.joinToString("\n") { it.name + " · " + formatDate(it.dateSeconds) }) },
+            text = { Text(folder.items.joinToString("\n") { it.name + " · " + SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(it.dateSeconds * 1000)) }) },
             confirmButton = { TextButton(onClick = { selected = null }) { Text("Закрыть") } })
     }
     renaming?.let { folder ->
