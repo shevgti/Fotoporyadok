@@ -725,14 +725,19 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
 
 @Composable
 private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onClick: () -> Unit) {
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.height(30.dp),
-        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
+    Box(
+        modifier = Modifier.height(30.dp).clip(SlantedButtonShape())
+            .background(
+                if (selected) Brush.horizontalGradient(listOf(palette.primary, palette.secondary))
+                else Brush.horizontalGradient(listOf(palette.surface, palette.card))
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 11.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = if (selected) "✓ $label" else label,
-            color = if (selected) palette.primary else palette.muted,
+            color = if (selected) palette.onPrimary else palette.muted,
             fontSize = 11.sp
         )
     }
