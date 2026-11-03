@@ -41,9 +41,8 @@ internal object AppUpdater {
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) return@withContext null
             val tag = release.optString("tag_name")
             val versionName = tag.removePrefix("v")
-            val versionCode = Regex("""versionCode\\s*=\\s*(\\d+)""")
+            val versionCode = Regex("""(?m)^versionCode:\\s*(\\d+)\\s*$""")
                 .find(release.optString("body"))?.groupValues?.get(1)?.toIntOrNull()
-                ?: versionName.substringAfterLast('.').toIntOrNull()
                 ?: 0
             val assets = release.optJSONArray("assets") ?: return@withContext null
             var downloadUrl: String? = null
@@ -64,25 +63,8 @@ internal object AppUpdater {
         }
     }
 
-    suspend fun downloadAndInstall(context: Context, update: UpdateInfo) = withContext(Dispatchers.IO) {
-        val directory = File(context.cacheDir, "updates").apply { mkdirs() }
-        val apk = File(directory, APK_NAME)
-        val connection = (URL(update.downloadUrl).openConnection() as HttpURLConnection).apply {
-            instanceFollowRedirects = true
-            connectTimeout = 20000
-            readTimeout = 60000
-            setRequestProperty("User-Agent", "FotoPoryadok-Android")
-        }
-        try {
-            if (connection.responseCode !in 200..299) error("Не удалось скачать APK")
-            connection.inputStream.use { input ->
-                apk.outputStream().use { output -> input.copyTo(output) }
-            }
-        } finally {
-            connection.disconnect()
-        }
-
-        withContext(Dispatchers.Main) {
+    suspend fun downloadAndInstall(context: Context, update: UpdateInfo): Boolean {
+        val canInstall = withContext(Dispatchers.Main) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 !context.packageManager.canRequestPackageInstalls()
             ) {
@@ -91,16 +73,41 @@ internal object AppUpdater {
                     Uri.parse("package:${context.packageName}")
                 ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(settingsIntent)
-                return@withContext
-            }
-            val uri = FileProvider.getUriForFile(
-                context, "${context.packageName}.fileprovider", apk
-            )
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(installIntent)
+                false
+            } else true
         }
+        if (!canInstall) return false
+
+        withContext(Dispatchers.IO) {
+            val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+            val apk = File(directory, APK_NAME)
+            val connection = (URL(update.downloadUrl).openConnection() as HttpURLConnection).apply {
+                instanceFollowRedirects = true
+                connectTimeout = 20000
+                readTimeout = 60000
+                setRequestProperty("User-Agent", "FotoPoryadok-Android")
+            }
+            try {
+                if (connection.responseCode !in 200..299) error("Не удалось скачать APK")
+                connection.inputStream.use { input ->
+                    apk.outputStream().use { output -> input.copyTo(output) }
+                }
+            } finally {
+                connection.disconnect()
+            }
+
+            withContext(Dispatchers.Main) {
+                val uri = FileProvider.getUriForFile(
+                    context, "${context.packageName}.fileprovider", apk
+                )
+                val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(installIntent)
+            }
+        }
+        return true
     }
+}
 }
