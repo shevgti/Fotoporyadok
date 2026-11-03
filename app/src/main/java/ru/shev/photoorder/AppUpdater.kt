@@ -110,4 +110,3 @@ internal object AppUpdater {
         return true
     }
 }
-}
