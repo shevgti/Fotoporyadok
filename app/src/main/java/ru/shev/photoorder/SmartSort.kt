@@ -44,11 +44,12 @@ internal fun moveSmartSortFolders(context: Context, folders: List<SmartSortFolde
     var failed = 0
     folders.forEach { folder ->
         val safeName = folder.name.replace("/", " ").replace("\\", " ").trim().take(80).ifBlank { "Без названия" }
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, (if (folder.items.firstOrNull()?.isVideo == true) "Movies/" else "Pictures/") + "ФотоПорядок/" + safeName + "/")
-        }
         folder.items.forEach { item ->
             try {
+                val values = ContentValues().apply {
+                    val root = if (item.isVideo) "Movies/" else "Pictures/"
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, root + "ФотоПорядок/" + safeName + "/")
+                }
                 if (context.contentResolver.update(item.uri, values, null, null) > 0) moved++ else failed++
             } catch (_: Exception) { failed++ }
         }
@@ -68,7 +69,7 @@ internal fun SmartSortPage(
     var selected by remember { mutableStateOf<SmartSortFolder?>(null) }
     var renaming by remember { mutableStateOf<SmartSortFolder?>(null) }
     var newName by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Умная сортировка", fontSize = 22.sp, color = Color.White)
         Text("Предлагаем папки по дате и исходному альбому. Проверь содержимое и названия перед переносом.",
             color = Color(0xFFAAA6C7), fontSize = 12.sp)
