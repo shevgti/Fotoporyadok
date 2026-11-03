@@ -335,6 +335,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
+                modifier = Modifier.width(290.dp),
                 drawerContainerColor = palette.surface,
                 drawerContentColor = palette.text
             ) {
@@ -416,7 +417,13 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         }
                     }
                     Text("Нажми на цвет, чтобы применить тему", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
-                    TextButton(onClick = { showThemePicker = false }, modifier = Modifier.align(Alignment.End).padding(end = 12.dp)) { Text("Готово", color = palette.accent) }
+                    TextButton(
+                        onClick = {
+                            showThemePicker = false
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.align(Alignment.End).padding(end = 12.dp)
+                    ) { Text("Готово", color = palette.accent) }
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 HorizontalDivider(color = palette.muted.copy(alpha = 0.25f), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
