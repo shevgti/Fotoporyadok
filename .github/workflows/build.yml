@@ -59,7 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           cp app/build/outputs/apk/release/app-release.apk app-release.apk
-          gh release create v0.2 app-release.apk \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "ФотоПорядок 0.2" \
-            --notes "versionCode: 2"
+          if gh release view v0.2 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload v0.2 app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create v0.2 app-release.apk \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "ФотоПорядок 0.2" \
+              --notes "versionCode: 2"
+          fi
