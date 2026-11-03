@@ -1,6 +1,7 @@
 package ru.shev.photoorder
 
 import android.Manifest
+import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,7 +71,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class MediaItem(
+internal data class MediaItem(
     val uri: Uri,
     val name: String,
     val dateSeconds: Long,
@@ -120,12 +122,33 @@ private fun PhotoOrderScreen() {
     var updateMessage by remember { mutableStateOf<String?>(null) }
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
+    var selectedPage by remember { mutableStateOf(0) }
+    var sortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
+    var sortStatus by remember { mutableStateOf<String?>(null) }
+    var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         hasPermission = hasMediaPermission(context)
+    }
+
+    val sortWriteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            scope.launch {
+                sortStatus = "Распределяем файлы…"
+                val outcome = withContext(Dispatchers.IO) {
+                    moveSmartSortFolders(context, pendingSortFolders)
+                }
+                sortStatus = "Готово: перемещено " + outcome.first + ", ошибок: " + outcome.second
+                refreshKey++
+            }
+        } else {
+            sortStatus = "Системное разрешение не подтверждено. Файлы не перемещены."
+        }
     }
 
     LaunchedEffect(hasPermission, refreshKey) {
@@ -206,7 +229,34 @@ private fun PhotoOrderScreen() {
             modifier = Modifier.padding(bottom = 2.dp)
         )
 
-        if (!hasPermission) {
+        if (selectedPage == 1) {
+            SmartSortPage(
+                media = media,
+                folders = sortFolders,
+                onAnalyze = {
+                    sortFolders = buildSmartSortPlan(media)
+                    sortStatus = "План готов. Проверь папки и названия."
+                },
+                onRename = { id, name ->
+                    sortFolders = sortFolders.map { if (it.id == id) it.copy(name = name) else it }
+                },
+                onConfirm = {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                        sortStatus = "Для безопасного пакетного переноса нужна версия Android 11 или новее. На этом телефоне файлы не изменены."
+                    } else {
+                        pendingSortFolders = sortFolders
+                        val uris = sortFolders.flatMap { it.items }.map { it.uri }
+                        if (uris.isEmpty()) {
+                            sortStatus = "Нет файлов для переноса."
+                        } else {
+                            val request = MediaStore.createWriteRequest(context.contentResolver, uris)
+                            sortWriteLauncher.launch(IntentSenderRequest.Builder(request).build())
+                        }
+                    }
+                },
+                status = sortStatus
+            )
+        } else if (!hasPermission) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
@@ -349,6 +399,20 @@ private fun PhotoOrderScreen() {
                         }
                     }
                 }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)
+                .clip(RoundedCornerShape(14.dp)).background(Color(0xFF171B39)).padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            listOf("⌂  Главная", "✨  Умная сортировка").forEachIndexed { index, label ->
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedPage == index) Color(0xFF5427D8) else Color.Transparent)
+                        .clickable { selectedPage = index }.padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) { Text(label, color = Color.White, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.Bold else FontWeight.Normal) }
             }
         }
     }
