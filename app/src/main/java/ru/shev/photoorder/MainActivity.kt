@@ -173,6 +173,9 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Create the channel at app startup so Android/HyperOS can expose
+        // the app's notification controls even before the first notification.
+        createAppNotificationChannel(this)
         setContent {
             var selectedThemeId by remember {
                 mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).let { oldId -> when (oldId) { 0 -> 0; 1 -> 1; 2, 9, 14 -> 2; 4 -> 3; 5, 8, 12 -> 4; 6, 13 -> 5; 7, 10, 18 -> 6; 15, 19 -> 7; 17 -> 8; 16 -> 9; else -> 0 } })
