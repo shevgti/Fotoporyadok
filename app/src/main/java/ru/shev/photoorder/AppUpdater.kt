@@ -41,7 +41,7 @@ internal object AppUpdater {
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) return@withContext null
             val tag = release.optString("tag_name")
             val versionName = tag.removePrefix("v")
-            val versionCode = Regex("""(?m)^versionCode:\\s*(\\d+)\\s*$""")
+            val versionCode = Regex("""(?m)^versionCode:\s*(\d+)\s*$""")
                 .find(release.optString("body"))?.groupValues?.get(1)?.toIntOrNull()
                 ?: 0
             val assets = release.optJSONArray("assets") ?: return@withContext null
