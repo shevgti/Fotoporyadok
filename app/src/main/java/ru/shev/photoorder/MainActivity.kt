@@ -201,18 +201,15 @@ private fun PhotoOrderScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AsyncImage(
                     model = R.drawable.fotoporyadok_mark,
                     contentDescription = "Знак ФотоПорядка",
-                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(28.dp).clip(RoundedCornerShape(7.dp)),
                     contentScale = ContentScale.Crop
                 )
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(Color(0xFF2196F3)))
-                        Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    }
+                    Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
                 }
             }
