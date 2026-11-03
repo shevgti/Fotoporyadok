@@ -2,6 +2,9 @@ name: Build APK
 on: [push, workflow_dispatch]
 permissions:
   contents: write
+concurrency:
+  group: fotoporyadok-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -58,6 +61,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          latest_sha="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$latest_sha" != "$GITHUB_SHA" ]; then
+            echo "Skipping release: a newer main commit exists."
+            exit 0
+          fi
           cp app/build/outputs/apk/release/app-release.apk app-release.apk
           if gh release view v1.0 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload v1.0 app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
