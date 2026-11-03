@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -47,6 +46,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,11 +59,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.video.VideoFrameDecoder
+import coil.request.ImageRequest
+import coil.request.videoFrameMillis
+import androidx.media3.common.MediaItem as PlayerMediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -109,6 +120,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PhotoOrderScreen() {
     val context = LocalContext.current
+    val videoImageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .components { add(VideoFrameDecoder.Factory()) }
+            .build()
+    }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -116,7 +132,7 @@ private fun PhotoOrderScreen() {
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
     var selectedAlbumId by remember { mutableStateOf<String?>(null) }
-    var selectedPhoto by remember { mutableStateOf<MediaItem?>(null) }
+    var selectedMedia by remember { mutableStateOf<MediaItem?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var updateMessage by remember { mutableStateOf<String?>(null) }
@@ -362,8 +378,7 @@ private fun PhotoOrderScreen() {
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
                             modifier = Modifier.clickable {
-                                if (item.isVideo) openVideo(context, item.uri)
-                                else selectedPhoto = item
+                                selectedMedia = item
                             },
                         ) {
                             Column {
@@ -375,7 +390,25 @@ private fun PhotoOrderScreen() {
                                             .background(Color(0xFF24234D)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFFBDB3FF))
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(item.uri)
+                                                .videoFrameMillis(1_000)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Кадр видео: ${item.name}",
+                                            imageLoader = videoImageLoader,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        Box(
+                                            modifier = Modifier.align(Alignment.Center)
+                                                .clip(RoundedCornerShape(30.dp))
+                                                .background(Color(0xAA080B20))
+                                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                                        ) {
+                                            Text("▶", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                 } else {
                                     AsyncImage(
@@ -450,25 +483,84 @@ private fun PhotoOrderScreen() {
         )
     }
 
-    selectedPhoto?.let { item ->
-        AlertDialog(
-            onDismissRequest = { selectedPhoto = null },
-            confirmButton = {
-                TextButton(onClick = { selectedPhoto = null }) { Text("Закрыть") }
-            },
-            title = { Text(item.name, maxLines = 1) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AsyncImage(
-                        model = item.uri,
-                        contentDescription = item.name,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                    Text("Дата: ${formatDate(item.dateSeconds)}")
-                }
-            }
+    selectedMedia?.let { item ->
+        FullscreenMediaViewer(
+            item = item,
+            onClose = { selectedMedia = null }
         )
+    }
+}
+
+@Composable
+private fun FullscreenMediaViewer(item: MediaItem, onClose: () -> Unit) {
+    val context = LocalContext.current
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black)
+        ) {
+            if (item.isVideo) {
+                val player = remember(item.uri) {
+                    ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(PlayerMediaItem.fromUri(item.uri))
+                        prepare()
+                        playWhenReady = true
+                    }
+                }
+                DisposableEffect(player) {
+                    onDispose { player.release() }
+                }
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { viewContext ->
+                        PlayerView(viewContext).apply {
+                            this.player = player
+                            useController = true
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                        }
+                    },
+                    update = { it.player = player }
+                )
+            } else {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = item.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .background(Color(0x99000000)).padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        item.name,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                    TextButton(onClick = onClose) {
+                        Text("Закрыть ✕", color = Color.White)
+                    }
+                }
+                Text(
+                    formatDate(item.dateSeconds),
+                    color = Color(0xFFDDDDDD),
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
@@ -577,14 +669,6 @@ private fun loadMedia(context: Context): List<MediaItem> {
         }
     }
     return result
-}
-
-private fun openVideo(context: Context, uri: Uri) {
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, "video/*")
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    runCatching { context.startActivity(intent) }
 }
 
 private fun formatDate(seconds: Long): String =
