@@ -574,6 +574,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     }
                 },
                 status = sortStatus,
+                palette = palette,
                 modifier = Modifier.weight(1f)
             )
         } else if (!hasPermission) {
