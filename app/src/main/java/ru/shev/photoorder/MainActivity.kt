@@ -881,16 +881,19 @@ private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () ->
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color) {
     Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
+        modifier = modifier.shadow(7.dp, RoundedCornerShape(15.dp)),
+        shape = RoundedCornerShape(15.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 1.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp, horizontal = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+            modifier = Modifier.fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color(0xFF30375C), Color(0xFF141A35))))
+                .padding(vertical = 7.dp, horizontal = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(label, color = Color(0xFFAAA6C7), fontSize = 8.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = Color(0xFFBFC8E8), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = accent, fontSize = 19.sp, fontWeight = FontWeight.Black)
         }
     }
 }
