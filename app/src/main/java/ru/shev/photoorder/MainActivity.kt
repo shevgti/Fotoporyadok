@@ -633,7 +633,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             },
             dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
             title = { Text("Доступна версия ${update.versionName}") },
-            text = { Text((update.notes.substringBefore("\\n\\n").ifBlank { "Доступна новая версия приложения." }) + "\\n\\nФайл: app-release.apk\\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName) }
+            text = { Text((update.notes.substringBefore("\n\n").ifBlank { "Доступна новая версия приложения." }) + "\n\nФайл: app-release.apk\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName) }
         )
     }
 
