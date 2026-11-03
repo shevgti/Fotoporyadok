@@ -381,8 +381,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), Color(0xFF5427D8))
-                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF174E9D))
-                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF7B2DBB))
+                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), palette.secondary)
+                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent)
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
@@ -477,7 +477,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                             .background(palette.surface),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFFBDB3FF))
+                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = palette.accent)
                                     }
                                 } else {
                                     AsyncImage(
@@ -486,7 +486,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(1f)
-                                            .background(Color(0xFF24234D)),
+                                            .background(palette.surface),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
