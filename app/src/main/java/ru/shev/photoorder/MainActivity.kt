@@ -24,11 +24,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,8 +73,12 @@ private data class MediaItem(
     val uri: Uri,
     val name: String,
     val dateSeconds: Long,
-    val isVideo: Boolean
+    val isVideo: Boolean,
+    val albumId: String,
+    val albumName: String
 )
+
+private data class AlbumInfo(val id: String, val name: String, val count: Int)
 
 private enum class MediaSort { NEWEST, OLDEST, NAME }
 
@@ -107,6 +113,7 @@ private fun PhotoOrderScreen() {
     var search by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
+    var selectedAlbumId by remember { mutableStateOf<String?>(null) }
     var selectedPhoto by remember { mutableStateOf<MediaItem?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
@@ -129,11 +136,17 @@ private fun PhotoOrderScreen() {
         }
     }
 
-    val tabMedia = when (selectedTab) {
+    val albums = remember(media) {
+        media.groupBy { it.albumId }.map { (id, items) ->
+            AlbumInfo(id, items.firstOrNull()?.albumName?.takeIf { it.isNotBlank() } ?: "Без альбома", items.size)
+        }.sortedBy { it.name.lowercase(Locale.ROOT) }
+    }
+    val tabMediaBase = when (selectedTab) {
         1 -> media.filter { !it.isVideo }
         2 -> media.filter { it.isVideo }
         else -> media
     }
+    val tabMedia = if (selectedAlbumId == null) tabMediaBase else tabMediaBase.filter { it.albumId == selectedAlbumId }
     val visibleMedia = remember(tabMedia, search, sort) {
         val filtered = tabMedia.filter { it.name.contains(search.trim(), ignoreCase = true) }
         when (sort) {
@@ -232,6 +245,20 @@ private fun PhotoOrderScreen() {
                     ) {
                         Text(label, fontSize = 12.sp, color = Color.White,
                             fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 1.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { selectedAlbumId = null }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    Text(if (selectedAlbumId == null) "✓ Все альбомы" else "Все альбомы", color = if (selectedAlbumId == null) Color(0xFFB99AFF) else Color(0xFFAAA6C7), fontSize = 11.sp)
+                }
+                albums.forEach { album ->
+                    TextButton(onClick = { selectedAlbumId = album.id }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        Text(if (selectedAlbumId == album.id) "✓ ${album.name} (${album.count})" else "${album.name} (${album.count})", color = if (selectedAlbumId == album.id) Color(0xFFB99AFF) else Color(0xFFAAA6C7), fontSize = 11.sp, maxLines = 1)
                     }
                 }
             }
@@ -438,7 +465,9 @@ private fun loadMedia(context: Context): List<MediaItem> {
         MediaStore.Files.FileColumns.MEDIA_TYPE,
         MediaStore.Files.FileColumns.DISPLAY_NAME,
         MediaStore.Files.FileColumns.DATE_ADDED,
-        MediaStore.MediaColumns.DATE_TAKEN
+        MediaStore.MediaColumns.DATE_TAKEN,
+        "bucket_id",
+        "bucket_display_name"
     )
     val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? OR ${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
     val selectionArgs = arrayOf(
@@ -459,6 +488,8 @@ private fun loadMedia(context: Context): List<MediaItem> {
         val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
         val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
         val takenColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+        val bucketIdColumn = cursor.getColumnIndex("bucket_id")
+        val bucketNameColumn = cursor.getColumnIndex("bucket_display_name")
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
@@ -474,7 +505,9 @@ private fun loadMedia(context: Context): List<MediaItem> {
                 uri = ContentUris.withAppendedId(baseUri, id),
                 name = cursor.getString(nameColumn) ?: if (isVideo) "Видео" else "Фото",
                 dateSeconds = if (taken > 0) taken / 1000 else added,
-                isVideo = isVideo
+                isVideo = isVideo,
+                albumId = if (bucketIdColumn >= 0) cursor.getString(bucketIdColumn) ?: "unknown" else "unknown",
+                albumName = if (bucketNameColumn >= 0) cursor.getString(bucketNameColumn) ?: "Без альбома" else "Без альбома"
             )
         }
     }
