@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -125,7 +127,7 @@ private fun ThemeChoiceDialog(selectedId: Int, onSelect: (Int) -> Unit, onDismis
         onDismissRequest = onDismiss,
         title = { Text("Темы оформления") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 appThemes.forEach { theme ->
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
@@ -151,18 +153,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            var selectedThemeId by remember {
+                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 3).coerceIn(0, 9))
+            }
+            val palette = appThemes[selectedThemeId]
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = palette.primary,
-                    onPrimary = Color.White,
+                    onPrimary = palette.onPrimary,
                     secondary = palette.secondary,
                     background = palette.background,
                     surface = palette.surface,
                     onSurface = palette.text
                 )
             ) {
-                Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF080B20)) {
-                    PhotoOrderScreen()
+                Surface(modifier = Modifier.fillMaxSize(), color = palette.background) {
+                    PhotoOrderScreen(
+                        themeId = selectedThemeId,
+                        onThemeChange = { id ->
+                            selectedThemeId = id
+                            getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+                                .edit().putInt("theme_id", id).apply()
+                        }
+                    )
                 }
             }
         }
@@ -170,10 +183,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun PhotoOrderScreen() {
+private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
-    var selectedThemeId by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 3).coerceIn(0, 9)) }
-    val palette = appThemes[selectedThemeId]
+    val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showThemePicker by remember { mutableStateOf(false) }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
