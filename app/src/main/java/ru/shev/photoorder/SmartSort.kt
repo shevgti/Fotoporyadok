@@ -64,12 +64,13 @@ internal fun SmartSortPage(
     onAnalyze: () -> Unit,
     onRename: (String, String) -> Unit,
     onConfirm: () -> Unit,
-    status: String?
+    status: String?,
+    modifier: Modifier = Modifier
 ) {
     var selected by remember { mutableStateOf<SmartSortFolder?>(null) }
     var renaming by remember { mutableStateOf<SmartSortFolder?>(null) }
     var newName by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Умная сортировка", fontSize = 22.sp, color = Color.White)
         Text("Предлагаем папки по дате и исходному альбому. Проверь содержимое и названия перед переносом.",
             color = Color(0xFFAAA6C7), fontSize = 12.sp)
