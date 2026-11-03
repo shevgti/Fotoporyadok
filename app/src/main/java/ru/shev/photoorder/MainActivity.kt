@@ -222,12 +222,14 @@ private fun PhotoOrderScreen() {
                 }
             }
         }
-        Text(
-            "Фото и видео на телефоне — в удобном порядке",
-            color = Color(0xFFAAA6C7),
-            fontSize = 11.sp,
-            modifier = Modifier.padding(bottom = 2.dp)
-        )
+        if (selectedPage != 0) {
+            Text(
+                "Фото и видео на телефоне — в удобном порядке",
+                color = Color(0xFFAAA6C7),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+        }
 
         if (selectedPage == 1) {
             SmartSortPage(
@@ -254,7 +256,8 @@ private fun PhotoOrderScreen() {
                         }
                     }
                 },
-                status = sortStatus
+                status = sortStatus,
+                modifier = Modifier.weight(1f)
             )
         } else if (!hasPermission) {
             Card(
