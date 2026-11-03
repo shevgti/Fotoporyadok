@@ -260,6 +260,10 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         hasPermission = hasMediaPermission(context)
     }
 
+    LaunchedEffect(drawerState.isOpen) {
+        if (drawerState.isOpen) notificationsEnabled = appNotificationsEnabled(context)
+    }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
