@@ -66,7 +66,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.video.VideoFrameDecoder
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import androidx.media3.common.MediaItem as PlayerMediaItem
@@ -118,6 +120,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PhotoOrderScreen() {
     val context = LocalContext.current
+    val videoImageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .components { add(VideoFrameDecoder.Factory()) }
+            .build()
+    }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -390,6 +397,7 @@ private fun PhotoOrderScreen() {
                                                 .crossfade(true)
                                                 .build(),
                                             contentDescription = "Кадр видео: ${item.name}",
+                                            imageLoader = videoImageLoader,
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
