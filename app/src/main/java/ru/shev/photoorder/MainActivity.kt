@@ -21,6 +21,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -103,44 +104,84 @@ private enum class MediaSort { NEWEST, OLDEST, NAME }
 
 private data class AppTheme(
     val id: Int, val name: String,
-    val background: Color, val surface: Color, val card: Color,
+    val background: Color, val backgroundEnd: Color,
+    val surface: Color, val card: Color,
     val primary: Color, val secondary: Color, val accent: Color,
     val muted: Color, val text: Color, val onPrimary: Color
 )
 
 private val appThemes = listOf(
-    AppTheme(0, "Неоновый синий", Color(0xFF06152D), Color(0xFF102744), Color(0xFF142F50), Color(0xFF087BFF), Color(0xFF00D7FF), Color(0xFF35A7FF), Color(0xFF9BB8D5), Color(0xFFF4FAFF), Color.White),
-    AppTheme(1, "Светлая", Color(0xFFF1F6FF), Color(0xFFFFFFFF), Color(0xFFE5EEFA), Color(0xFF1769E8), Color(0xFF48A5FF), Color(0xFF287DEB), Color(0xFF53657D), Color(0xFF17263B), Color.White),
-    AppTheme(2, "Закат", Color(0xFF18202B), Color(0xFF27313D), Color(0xFF303B47), Color(0xFFFF9B19), Color(0xFFFF6D45), Color(0xFFFFC15C), Color(0xFFC4B8AC), Color(0xFFFFF8EF), Color(0xFF242424)),
-    AppTheme(3, "Фиолетовый неон", Color(0xFF080B20), Color(0xFF151A35), Color(0xFF171B39), Color(0xFF5427D8), Color(0xFF9B5CFF), Color(0xFFB99AFF), Color(0xFFAAA6C7), Color(0xFFF7F4FF), Color.White),
-    AppTheme(4, "Осень", Color(0xFF24170F), Color(0xFF3A281C), Color(0xFF493222), Color(0xFFB84A08), Color(0xFFE18A24), Color(0xFFFFBD68), Color(0xFFD2B79D), Color(0xFFFFF3E5), Color.White),
-    AppTheme(5, "Чёрный и золото", Color(0xFF080808), Color(0xFF191714), Color(0xFF24211B), Color(0xFFB88922), Color(0xFFE4C36A), Color(0xFFFFD978), Color(0xFFBEB7A7), Color(0xFFFFF8E8), Color(0xFF17130A)),
-    AppTheme(6, "Зелёная", Color(0xFF071B12), Color(0xFF10291C), Color(0xFF173725), Color(0xFF168A43), Color(0xFF64C96B), Color(0xFF9AE58C), Color(0xFFA8C5AC), Color(0xFFF0FFF1), Color.White),
-    AppTheme(7, "Лавандовая", Color(0xFF241A38), Color(0xFF35264D), Color(0xFF44315D), Color(0xFF8B62C8), Color(0xFFE19ACD), Color(0xFFE9B9F4), Color(0xFFD0C0DC), Color(0xFFFFF5FF), Color.White),
-    AppTheme(8, "Ледяная", Color(0xFFEAF5FF), Color(0xFFFFFFFF), Color(0xFFDCEEFF), Color(0xFF0878E8), Color(0xFF49C7F5), Color(0xFF2E9EF0), Color(0xFF526D85), Color(0xFF122B42), Color.White),
-    AppTheme(9, "Бирюзовый неон", Color(0xFF03151C), Color(0xFF0B2630), Color(0xFF10333D), Color(0xFF00AFC1), Color(0xFFB22BFF), Color(0xFF36E5E8), Color(0xFF9ABCC4), Color(0xFFF0FFFF), Color(0xFF00191D))
+    AppTheme(0, "Классический синий", Color(0xFF071A35), Color(0xFF123F73), Color(0xFF102B4D), Color(0xFF173B63), Color(0xFF087BFF), Color(0xFF49C8FF), Color(0xFF8BD9FF), Color(0xFF9BB8D5), Color(0xFFF4FAFF), Color.White),
+    AppTheme(1, "Весенняя свежесть", Color(0xFF092414), Color(0xFF286B35), Color(0xFF143B23), Color(0xFF1D4C2B), Color(0xFF279447), Color(0xFF9FE870), Color(0xFFD4F6A5), Color(0xFFB7D5B4), Color(0xFFF4FFF0), Color.White),
+    AppTheme(2, "Летнее солнце", Color(0xFF4A2607), Color(0xFFE99A16), Color(0xFF74400A), Color(0xFF96510B), Color(0xFFFFC02E), Color(0xFFFFE17A), Color(0xFFFFD46B), Color(0xFFE9D1A5), Color(0xFFFFFAE9), Color(0xFF402000)),
+    AppTheme(3, "Осенний уют", Color(0xFF351308), Color(0xFF9A3D13), Color(0xFF54220F), Color(0xFF713016), Color(0xFFCA571B), Color(0xFFFFA34A), Color(0xFFFFC078), Color(0xFFD8B49A), Color(0xFFFFF4E8), Color.White),
+    AppTheme(4, "Зимняя сказка", Color(0xFF0A2348), Color(0xFF7FBDEB), Color(0xFF183A60), Color(0xFF244E78), Color(0xFF9CCFF8), Color(0xFFE3F5FF), Color(0xFFBDE7FF), Color(0xFFB5D1E7), Color(0xFFF7FCFF), Color(0xFF15304D)),
+    AppTheme(5, "Тёмная классика", Color(0xFF080B12), Color(0xFF242B38), Color(0xFF171D28), Color(0xFF222B39), Color(0xFF52647C), Color(0xFFD5B66D), Color(0xFFE8D49B), Color(0xFF9AA7B8), Color(0xFFF4F6FA), Color(0xFF10151D)),
+    AppTheme(6, "Розовый закат", Color(0xFF35102D), Color(0xFFB33F75), Color(0xFF571B46), Color(0xFF742653), Color(0xFFE45D9B), Color(0xFFFFB0D0), Color(0xFFFFD0E2), Color(0xFFE1B6CD), Color(0xFFFFF5FA), Color(0xFF47142F)),
+    AppTheme(7, "Бирюзовый бриз", Color(0xFF033D4B), Color(0xFF08A6B5), Color(0xFF075563), Color(0xFF0A6878), Color(0xFF12C5D2), Color(0xFF9AF4ED), Color(0xFF8CEFE8), Color(0xFFA9D8D9), Color(0xFFF0FFFF), Color(0xFF00343D)),
+    AppTheme(8, "Серебристый", Color(0xFF202A38), Color(0xFF8495A8), Color(0xFF344252), Color(0xFF46576A), Color(0xFFB7C5D3), Color(0xFFE8EEF4), Color(0xFFD8E2EB), Color(0xFFBBC7D2), Color(0xFFF8FBFF), Color(0xFF24313F)),
+    AppTheme(9, "Золотая осень", Color(0xFF34200A), Color(0xFFB87518), Color(0xFF50320E), Color(0xFF704515), Color(0xFFD38A20), Color(0xFFFFD16A), Color(0xFFFFE3A1), Color(0xFFD9C29A), Color(0xFFFFF8E8), Color(0xFF3A2408)),
+    AppTheme(10, "Морской стиль", Color(0xFF032C45), Color(0xFF087E9D), Color(0xFF08445E), Color(0xFF0B5873), Color(0xFF078EAE), Color(0xFF70D8E8), Color(0xFFA4ECF0), Color(0xFFA8CED8), Color(0xFFF0FCFF), Color(0xFF063143)),
+    AppTheme(11, "Лесной уют", Color(0xFF0B2118), Color(0xFF2E5736), Color(0xFF173526), Color(0xFF214633), Color(0xFF367447), Color(0xFF9ACB79), Color(0xFFC5E7A8), Color(0xFFB4CDB5), Color(0xFFF3FFF3), Color.White),
+    AppTheme(12, "Каменные горы", Color(0xFF202B39), Color(0xFF62758A), Color(0xFF344354), Color(0xFF43566B), Color(0xFF728DA8), Color(0xFFC4D4E5), Color(0xFFE0EAF4), Color(0xFFBAC8D5), Color(0xFFF6FAFF), Color(0xFF172331)),
+    AppTheme(13, "Цветущий сад", Color(0xFF4B183B), Color(0xFFE28AB4), Color(0xFF68244F), Color(0xFF82305F), Color(0xFFE878AC), Color(0xFFFFC8E0), Color(0xFFFFD9EA), Color(0xFFE5B8CE), Color(0xFFFFF5FA), Color(0xFF4D1A37)),
+    AppTheme(14, "Песчаный берег", Color(0xFF51300E), Color(0xFFD7A34B), Color(0xFF704519), Color(0xFF8A5A25), Color(0xFFE1A94C), Color(0xFFFFE0A1), Color(0xFFFFE9BE), Color(0xFFE1CBA7), Color(0xFFFFFAEF), Color(0xFF43280D)),
+    AppTheme(15, "Ночной город", Color(0xFF090B31), Color(0xFF322078), Color(0xFF171849), Color(0xFF24245F), Color(0xFF533DDA), Color(0xFF54B7FF), Color(0xFF9B8CFF), Color(0xFFB3B4D8), Color(0xFFF4F3FF), Color.White),
+    AppTheme(16, "Северное сияние", Color(0xFF042B35), Color(0xFF087F78), Color(0xFF0B4148), Color(0xFF10575A), Color(0xFF00B9A7), Color(0xFF8DF5D1), Color(0xFF72E9D5), Color(0xFFA8D6D0), Color(0xFFF0FFFC), Color(0xFF003B3A)),
+    AppTheme(17, "Кофейный стиль", Color(0xFF24140D), Color(0xFF754322), Color(0xFF3C2419), Color(0xFF543322), Color(0xFFA86A3D), Color(0xFFE2B77E), Color(0xFFF0D1A5), Color(0xFFD0B7A1), Color(0xFFFFF7EF), Color(0xFF2C1A10)),
+    AppTheme(18, "Мятный стиль", Color(0xFF0B3D37), Color(0xFF72CDB2), Color(0xFF14564C), Color(0xFF1D6B5D), Color(0xFF4DC5A6), Color(0xFFB6F0D9), Color(0xFFD2F8E8), Color(0xFFB1DCD0), Color(0xFFF2FFFA), Color(0xFF073C33)),
+    AppTheme(19, "Индиго-ночь", Color(0xFF0A103B), Color(0xFF3A267B), Color(0xFF171C4E), Color(0xFF252B67), Color(0xFF4536C8), Color(0xFFB5A5FF), Color(0xFFD2C8FF), Color(0xFFB9B8E0), Color(0xFFF7F5FF), Color.White)
 )
+
+private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(
+        size: androidx.compose.ui.geometry.Size,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+        density: androidx.compose.ui.unit.Density
+    ): androidx.compose.ui.graphics.Outline {
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * cut, 0f)
+            lineTo(size.width, 0f)
+            lineTo(size.width * (1f - cut), size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        return androidx.compose.ui.graphics.Outline.Generic(path)
+    }
+}
 
 @Composable
 private fun ThemeChoiceDialog(selectedId: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Темы оформления") },
+        title = { Text("Выбери скин") },
         text = {
-            Column(modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                appThemes.forEach { theme ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(theme.card).clickable { onSelect(theme.id) }
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.heightIn(max = 540.dp),
+                contentPadding = PaddingValues(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(appThemes, key = { it.id }) { theme ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(SlantedButtonShape())
+                            .background(Brush.verticalGradient(listOf(theme.backgroundEnd, theme.background)))
+                            .clickable { onSelect(theme.id) }
+                            .padding(horizontal = 10.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(theme.background), contentAlignment = Alignment.Center) {
-                            Box(Modifier.size(15.dp).clip(RoundedCornerShape(5.dp)).background(theme.primary))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text((theme.id + 1).toString().padStart(2, '0'), color = theme.accent, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                            Text(theme.name, color = theme.text, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                         }
-                        Text(theme.name, modifier = Modifier.weight(1f), color = theme.text, fontSize = 14.sp)
-                        if (selectedId == theme.id) Text("✓", color = theme.secondary, fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf(theme.primary, theme.secondary, theme.accent).forEach { shade ->
+                                Box(Modifier.weight(1f).height(7.dp).clip(SlantedButtonShape()).background(shade))
+                            }
+                        }
+                        if (selectedId == theme.id) Text("✓ Выбрано", color = theme.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -154,7 +195,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var selectedThemeId by remember {
-                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 3).coerceIn(0, 9))
+                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).let { if (it == 3) 0 else it.coerceIn(0, 19) })
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
@@ -266,14 +307,15 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 drawerContentColor = palette.text
             ) {
                 Text("Меню", modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = palette.text)
-                TextButton(
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        showThemePicker = true
-                    },
+                Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                        .clickable {
+                            scope.launch { drawerState.close() }
+                            showThemePicker = true
+                        }.padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
-                    Text("🎨  Темы оформления", modifier = Modifier.fillMaxWidth(), color = palette.text, fontSize = 16.sp)
+                    Text("🎨  Скины и темы оформления", color = palette.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -281,7 +323,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(palette.background)
+            .background(Brush.verticalGradient(listOf(palette.backgroundEnd, palette.background)))
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
@@ -370,9 +412,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 ) {
                     Text("Разрешите доступ к фото и видео", fontWeight = FontWeight.SemiBold)
                     Text("Приложение показывает медиафайлы, которые уже хранятся на телефоне. Оно ничего не загружает в интернет и не удаляет.")
-                    Button(onClick = { permissionLauncher.launch(requiredMediaPermissions()) }) {
-                        Text("Выбрать фото и видео")
-                    }
+                    SlantedActionButton("Выбрать фото и видео", palette) { permissionLauncher.launch(requiredMediaPermissions()) }
                 }
             }
         } else {
@@ -386,13 +426,13 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-                    .clip(RoundedCornerShape(11.dp)).background(palette.surface).padding(3.dp),
+                    .clip(SlantedButtonShape()).background(palette.surface).padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                            .background(if (selectedTab == index) palette.primary else Color.Transparent)
+                        modifier = Modifier.weight(1f).clip(SlantedButtonShape())
+                            .background(if (selectedTab == index) Brush.horizontalGradient(listOf(palette.primary, palette.secondary)) else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)))
                             .clickable { selectedTab = index }.padding(vertical = 5.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -506,13 +546,13 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)
-                .clip(RoundedCornerShape(14.dp)).background(Color(0xFF171B39)).padding(4.dp),
+                .clip(SlantedButtonShape()).background(palette.surface).padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf("⌂  Главная", "✨  Умная сортировка").forEachIndexed { index, label ->
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (selectedPage == index) palette.primary else Color.Transparent)
+                    modifier = Modifier.weight(1f).clip(SlantedButtonShape())
+                        .background(if (selectedPage == index) Brush.horizontalGradient(listOf(palette.primary, palette.secondary)) else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)))
                         .clickable { selectedPage = index }.padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) { Text(label, color = Color.White, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.Bold else FontWeight.Normal) }
@@ -651,6 +691,18 @@ private fun FullscreenMediaViewer(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().clip(SlantedButtonShape())
+            .background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+            .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 13.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = palette.onPrimary, fontWeight = FontWeight.Bold)
     }
 }
 
