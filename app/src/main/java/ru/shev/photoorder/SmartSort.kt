@@ -7,6 +7,8 @@ import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -43,7 +45,7 @@ internal fun moveSmartSortFolders(context: Context, folders: List<SmartSortFolde
     folders.forEach { folder ->
         val safeName = folder.name.replace("/", " ").replace("\\", " ").trim().take(80).ifBlank { "Без названия" }
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/ФотоПорядок/" + safeName + "/")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, (if (folder.items.firstOrNull()?.isVideo == true) "Movies/" else "Pictures/") + "ФотоПорядок/" + safeName + "/")
         }
         folder.items.forEach { item ->
             try {
@@ -95,7 +97,46 @@ internal fun SmartSortPage(
     }
     selected?.let { folder ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text(folder.name) },
-            text = { Text(folder.items.joinToString("\n") { it.name + " · " + SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(it.dateSeconds * 1000)) }) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${folder.items.size} файлов")
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(88.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(folder.items, key = { it.uri.toString() }) { item ->
+                            Column {
+                                if (item.isVideo) {
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                                        color = Color(0xFF24234D),
+                                        shape = MaterialTheme.shapes.medium
+                                    ) {
+                                        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                            Text("▶", color = Color.White)
+                                        }
+                                    }
+                                } else {
+                                    AsyncImage(
+                                        model = item.uri,
+                                        contentDescription = item.name,
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                Text(item.name, color = Color.White, fontSize = 10.sp, maxLines = 1)
+                                Text(
+                                    SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(item.dateSeconds * 1000)),
+                                    color = Color(0xFFAAA6C7),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            },
             confirmButton = { TextButton(onClick = { selected = null }) { Text("Закрыть") } })
     }
     renaming?.let { folder ->
