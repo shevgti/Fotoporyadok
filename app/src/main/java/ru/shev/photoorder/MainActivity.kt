@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -150,7 +151,7 @@ private fun PhotoOrderScreen() {
             .padding(horizontal = 16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -158,10 +159,10 @@ private fun PhotoOrderScreen() {
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(15.dp))
                         .background(Color(0xFF5427D8))
-                        .padding(horizontal = 11.dp, vertical = 8.dp)
-                ) { Text("◉", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold) }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) { Text("◉", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
                 Column {
-                    Text("ФотоПорядок", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
                 }
             }
@@ -188,7 +189,8 @@ private fun PhotoOrderScreen() {
         Text(
             "Фото и видео на телефоне — в удобном порядке",
             color = Color(0xFFAAA6C7),
-            modifier = Modifier.padding(bottom = 6.dp)
+            fontSize = 11.sp,
+            modifier = Modifier.padding(bottom = 2.dp)
         )
 
         if (!hasPermission) {
@@ -209,31 +211,39 @@ private fun PhotoOrderScreen() {
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), Color(0xFF5427D8))
                 StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF174E9D))
                 StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), Color(0xFF7B2DBB))
             }
-            TabRow(selectedTabIndex = selectedTab, containerColor = Color(0xFF11152E), contentColor = Color(0xFFB99AFF)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
+                    .clip(RoundedCornerShape(11.dp)).background(Color(0xFF11152E)).padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(label) }
-                    )
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                            .background(if (selectedTab == index) Color(0xFF5427D8) else Color.Transparent)
+                            .clickable { selectedTab = index }.padding(vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(label, fontSize = 12.sp, color = Color.White,
+                            fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal)
+                    }
                 }
             }
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(50.dp),
                 singleLine = true,
                 label = { Text("Поиск по названию") }
             )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 1.dp, bottom = 1.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 SortButton("Новые", sort == MediaSort.NEWEST) { sort = MediaSort.NEWEST }
@@ -247,8 +257,8 @@ private fun PhotoOrderScreen() {
                     else -> "Показано: ${visibleMedia.size}"
                 },
                 color = Color(0xFF5F5A54),
-                fontSize = 13.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
+                fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 3.dp)
             )
 
             if (visibleMedia.isEmpty()) {
@@ -378,22 +388,26 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
         colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp, horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
-            Text(label, color = Color(0xFFAAA6C7), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = accent, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = Color(0xFFAAA6C7), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.height(30.dp),
+        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
+    ) {
         Text(
             text = if (selected) "✓ $label" else label,
             color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFFAAA6C7),
-            fontSize = 12.sp
+            fontSize = 11.sp
         )
     }
 }
