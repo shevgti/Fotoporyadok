@@ -239,14 +239,12 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
                 if (latest != null && latest.versionCode != updateInfo?.versionCode) {
                     updateInfo = latest
-                    if (appNotificationsEnabled(context)) {
-                        postAppNotification(
-                            context,
-                            "Доступно обновление ФотоПорядка",
-                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
-                            1002
-                        )
-                    }
+                    postAppNotification(
+                        context,
+                        "Доступно обновление ФотоПорядка",
+                        "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
+                        1002
+                    )
                     showUpdateDialog = true
                 } else if (latest == null) {
                     updateInfo = null
