@@ -12,25 +12,34 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Prepare and verify release signing key
+      - name: Prepare release signing key
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          FOTOPORYADOK_SIGNING_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fotoporyadok-release.jks"
-          echo "KEYSTORE_FILE=$RUNNER_TEMP/fotoporyadok-release.jks" >> "$GITHUB_ENV"
-          if keytool -list -keystore "$RUNNER_TEMP/fotoporyadok-release.jks" -storepass:env KEYSTORE_PASSWORD >/dev/null 2>&1; then
-            echo "Release keystore file and store password verified."
-          else
-            echo "::error::Release keystore could not be opened with KEYSTORE_PASSWORD. Check the stored keystore/password pair; no secret values were printed."
+          if [ -z "${FOTOPORYADOK_SIGNING_PASSWORD:-}" ]; then
+            echo "::error::Add the FOTOPORYADOK_SIGNING_PASSWORD repository secret before building the signed release."
             exit 1
           fi
+          base64 --decode signing/release-key.jks.enc.b64 > "$RUNNER_TEMP/release-key.jks.enc"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
+            -in "$RUNNER_TEMP/release-key.jks.enc" \
+            -out "$RUNNER_TEMP/fotoporyadok-release.jks" \
+            -pass env:FOTOPORYADOK_SIGNING_PASSWORD
+          keytool -list -keystore "$RUNNER_TEMP/fotoporyadok-release.jks" \
+            -storepass:env FOTOPORYADOK_SIGNING_PASSWORD -alias fotoporyadok >/dev/null
+          {
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/fotoporyadok-release.jks"
+            echo "KEYSTORE_PASSWORD=$FOTOPORYADOK_SIGNING_PASSWORD"
+            echo "KEY_ALIAS=fotoporyadok"
+            echo "KEY_PASSWORD=$FOTOPORYADOK_SIGNING_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Release signing key decrypted and verified."
       - name: Build debug and signed release APKs
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
+          KEY_ALIAS: fotoporyadok
+          KEY_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
         run: gradle assembleDebug assembleRelease --stacktrace
       - uses: actions/upload-artifact@v4
         with:
