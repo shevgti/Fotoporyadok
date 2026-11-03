@@ -215,6 +215,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showThemePicker by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(appNotificationsEnabled(context)) }
     var showNotificationCenter by remember { mutableStateOf(false) }
     var notificationHistory by remember { mutableStateOf(loadNotificationHistory(context)) }
@@ -419,12 +421,51 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Spacer(modifier = Modifier.weight(1f))
                 HorizontalDivider(color = palette.muted.copy(alpha = 0.25f), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                 Text("ФотоПорядок  •  " + BuildConfig.VERSION_NAME, modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp), color = palette.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(modifier = Modifier.weight(1f).shadow(4.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary))).clickable { scope.launch { drawerState.close() }; checkingUpdate = true; scope.launch { try { updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE); if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия." else showUpdateDialog = true } catch (error: Exception) { updateMessage = "Не удалось проверить обновление: " + (error.message ?: "ошибка сети") } finally { checkingUpdate = false } } }.padding(9.dp), contentAlignment = Alignment.Center) {
-                        Text("↻ Обновление", color = palette.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().shadow(5.dp, RoundedCornerShape(10.dp))
+                            .clip(SlantedButtonShape())
+                            .background(if (updateInfo != null) Brush.horizontalGradient(listOf(Color(0xFFB8F36B), Color(0xFF72C936))) else Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                            .clickable {
+                                scope.launch { drawerState.close() }
+                                checkingUpdate = true
+                                scope.launch {
+                                    try {
+                                        updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
+                                        if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия."
+                                        else showUpdateDialog = true
+                                    } catch (error: Exception) {
+                                        updateMessage = "Не удалось проверить обновление: " + (error.message ?: "ошибка сети")
+                                    } finally { checkingUpdate = false }
+                                }
+                            }.padding(horizontal = 12.dp, vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (updateInfo != null) "↻  Доступно обновление " + updateInfo!!.versionName else "↻  Обновление " + BuildConfig.VERSION_NAME,
+                            color = if (updateInfo != null) Color(0xFF17210A) else palette.onPrimary,
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1
+                        )
                     }
-                    Box(modifier = Modifier.weight(1f).shadow(4.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp)).background(palette.card).clickable { scope.launch { drawerState.close() } }.padding(9.dp), contentAlignment = Alignment.Center) {
-                        Text("ⓘ О приложении", color = palette.text, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(
+                            modifier = Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(9.dp))
+                                .clip(SlantedButtonShape()).background(palette.card)
+                                .clickable { scope.launch { drawerState.close() }; showAboutDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("ⓘ О приложении", color = palette.text, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(9.dp))
+                                .clip(SlantedButtonShape()).background(palette.card)
+                                .clickable { scope.launch { drawerState.close() }; showExitDialog = true }
+                                .padding(horizontal = 6.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("↪ Выход", color = palette.text, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
                     }
                 }
             }
@@ -738,6 +779,39 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showNotificationCenter = false }) { Text("Закрыть") }
+            }
+        )
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            confirmButton = { TextButton(onClick = { showAboutDialog = false }) { Text("Закрыть") } },
+            title = { Text("ФотоПорядок") },
+            text = {
+                Text(
+                    "Версия " + BuildConfig.VERSION_NAME + " (build " + BuildConfig.VERSION_CODE + ")\n\n" +
+                    "Удобная медиатека для просмотра и упорядочивания фотографий и видео. " +
+                    "Ваши файлы остаются на устройстве.\n\n" +
+                    "Обновления приложения публикуются через GitHub."
+                )
+            }
+        )
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Выйти из ФотоПорядка?") },
+            text = { Text("Приложение будет закрыто. Ваши фотографии и видео не изменятся.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showExitDialog = false
+                    (context as? Activity)?.finish()
+                }) { Text("Выйти") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) { Text("Отмена") }
             }
         )
     }
