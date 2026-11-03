@@ -258,14 +258,22 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        checkingUpdate = true
-        try {
-            updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
-            showUpdateDialog = updateInfo != null
-        } catch (_: Exception) {
-            // Проверка при запуске не должна мешать работе с медиатекой.
-        } finally {
-            checkingUpdate = false
+        while (true) {
+            checkingUpdate = true
+            try {
+                val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
+                if (latest != null && latest.versionCode != updateInfo?.versionCode) {
+                    updateInfo = latest
+                    showUpdateDialog = true
+                } else if (latest == null) {
+                    updateInfo = null
+                }
+            } catch (_: Exception) {
+                // Ошибка сети не должна мешать работе с медиатекой.
+            } finally {
+                checkingUpdate = false
+            }
+            kotlinx.coroutines.delay(30 * 60 * 1000L)
         }
     }
 
