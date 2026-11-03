@@ -79,14 +79,14 @@ internal fun SmartSortPage(
             Text("План ещё не создан. Фото и видео пока не перемещаются.", color = palette.text)
             Button(onClick = onAnalyze, enabled = media.isNotEmpty()) { Text("Создать план сортировки") }
         } else {
-            Text("Папок: " + folders.size + " · Файлов: " + folders.sumOf { it.items.size }, color = Color.White)
+            Text("Папок: " + folders.size + " · Файлов: " + folders.sumOf { it.items.size }, color = palette.text)
             LazyVerticalGrid(columns = GridCells.Adaptive(145.dp), modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(folders, key = { it.id }) { folder ->
                     Card(Modifier.fillMaxWidth().clickable { selected = folder }, colors = CardDefaults.cardColors(containerColor = palette.card), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(10.dp)) {
-                            Text("📁 " + folder.name, color = Color.White)
-                            Text(folder.items.size.toString() + " файлов", color = Color(0xFFAAA6C7))
+                            Text("📁 " + folder.name, color = palette.text)
+                            Text(folder.items.size.toString() + " файлов", color = palette.muted)
                             TextButton(onClick = { renaming = folder; newName = folder.name }) { Text("Переименовать") }
                             TextButton(onClick = { selected = folder }) { Text("Посмотреть") }
                         }
@@ -94,7 +94,7 @@ internal fun SmartSortPage(
                 }
             }
             Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) { Text("Подтвердить распределение") }
-            Text("До подтверждения оригиналы не перемещаются.", color = Color(0xFFAAA6C7), fontSize = 11.sp)
+            Text("До подтверждения оригиналы не перемещаются.", color = palette.muted, fontSize = 11.sp)
         }
         status?.let { Text(it, color = palette.accent) }
     }
@@ -118,7 +118,7 @@ internal fun SmartSortPage(
                                         shape = MaterialTheme.shapes.medium
                                     ) {
                                         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                            Text("▶", color = Color.White)
+                                            Text("▶", color = palette.text)
                                         }
                                     }
                                 } else {
@@ -129,10 +129,10 @@ internal fun SmartSortPage(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-                                Text(item.name, color = Color.White, fontSize = 10.sp, maxLines = 1)
+                                Text(item.name, color = palette.text, fontSize = 10.sp, maxLines = 1)
                                 Text(
                                     SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(item.dateSeconds * 1000)),
-                                    color = Color(0xFFAAA6C7),
+                                    color = palette.muted,
                                     fontSize = 9.sp
                                 )
                             }
