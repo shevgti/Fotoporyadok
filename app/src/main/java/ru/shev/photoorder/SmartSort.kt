@@ -65,24 +65,25 @@ internal fun SmartSortPage(
     onRename: (String, String) -> Unit,
     onConfirm: () -> Unit,
     status: String?,
+    palette: AppTheme,
     modifier: Modifier = Modifier
 ) {
     var selected by remember { mutableStateOf<SmartSortFolder?>(null) }
     var renaming by remember { mutableStateOf<SmartSortFolder?>(null) }
     var newName by remember { mutableStateOf("") }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Умная сортировка", fontSize = 22.sp, color = Color.White)
+        Text("Умная сортировка", fontSize = 26.sp, color = palette.text, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
         Text("Предлагаем папки по дате и исходному альбому. Проверь содержимое и названия перед переносом.",
-            color = Color(0xFFAAA6C7), fontSize = 12.sp)
+            color = palette.muted, fontSize = 12.sp)
         if (folders.isEmpty()) {
-            Text("План ещё не создан. Фото и видео пока не перемещаются.", color = Color.White)
+            Text("План ещё не создан. Фото и видео пока не перемещаются.", color = palette.text)
             Button(onClick = onAnalyze, enabled = media.isNotEmpty()) { Text("Создать план сортировки") }
         } else {
             Text("Папок: " + folders.size + " · Файлов: " + folders.sumOf { it.items.size }, color = Color.White)
             LazyVerticalGrid(columns = GridCells.Adaptive(145.dp), modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(folders, key = { it.id }) { folder ->
-                    Card(Modifier.fillMaxWidth().clickable { selected = folder }) {
+                    Card(Modifier.fillMaxWidth().clickable { selected = folder }, colors = CardDefaults.cardColors(containerColor = palette.card), shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(10.dp)) {
                             Text("📁 " + folder.name, color = Color.White)
                             Text(folder.items.size.toString() + " файлов", color = Color(0xFFAAA6C7))
@@ -95,7 +96,7 @@ internal fun SmartSortPage(
             Button(onClick = onConfirm, modifier = Modifier.fillMaxWidth()) { Text("Подтвердить распределение") }
             Text("До подтверждения оригиналы не перемещаются.", color = Color(0xFFAAA6C7), fontSize = 11.sp)
         }
-        status?.let { Text(it, color = Color(0xFFB99AFF)) }
+        status?.let { Text(it, color = palette.accent) }
     }
     selected?.let { folder ->
         AlertDialog(onDismissRequest = { selected = null }, title = { Text(folder.name) },
@@ -113,7 +114,7 @@ internal fun SmartSortPage(
                                 if (item.isVideo) {
                                     Surface(
                                         modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                                        color = Color(0xFF24234D),
+                                        color = palette.surface,
                                         shape = MaterialTheme.shapes.medium
                                     ) {
                                         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
