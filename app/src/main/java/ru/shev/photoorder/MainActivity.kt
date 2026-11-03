@@ -43,6 +43,11 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -94,18 +99,66 @@ private data class AlbumInfo(val id: String, val name: String, val count: Int)
 
 private enum class MediaSort { NEWEST, OLDEST, NAME }
 
+private data class AppTheme(
+    val id: Int, val name: String,
+    val background: Color, val surface: Color, val card: Color,
+    val primary: Color, val secondary: Color, val accent: Color,
+    val muted: Color, val text: Color, val onPrimary: Color
+)
+
+private val appThemes = listOf(
+    AppTheme(0, "Неоновый синий", Color(0xFF06152D), Color(0xFF102744), Color(0xFF142F50), Color(0xFF087BFF), Color(0xFF00D7FF), Color(0xFF35A7FF), Color(0xFF9BB8D5), Color(0xFFF4FAFF), Color.White),
+    AppTheme(1, "Светлая", Color(0xFFF1F6FF), Color(0xFFFFFFFF), Color(0xFFE5EEFA), Color(0xFF1769E8), Color(0xFF48A5FF), Color(0xFF287DEB), Color(0xFF53657D), Color(0xFF17263B), Color.White),
+    AppTheme(2, "Закат", Color(0xFF18202B), Color(0xFF27313D), Color(0xFF303B47), Color(0xFFFF9B19), Color(0xFFFF6D45), Color(0xFFFFC15C), Color(0xFFC4B8AC), Color(0xFFFFF8EF), Color(0xFF242424)),
+    AppTheme(3, "Фиолетовый неон", Color(0xFF080B20), Color(0xFF151A35), Color(0xFF171B39), Color(0xFF5427D8), Color(0xFF9B5CFF), Color(0xFFB99AFF), Color(0xFFAAA6C7), Color(0xFFF7F4FF), Color.White),
+    AppTheme(4, "Осень", Color(0xFF24170F), Color(0xFF3A281C), Color(0xFF493222), Color(0xFFB84A08), Color(0xFFE18A24), Color(0xFFFFBD68), Color(0xFFD2B79D), Color(0xFFFFF3E5), Color.White),
+    AppTheme(5, "Чёрный и золото", Color(0xFF080808), Color(0xFF191714), Color(0xFF24211B), Color(0xFFB88922), Color(0xFFE4C36A), Color(0xFFFFD978), Color(0xFFBEB7A7), Color(0xFFFFF8E8), Color(0xFF17130A)),
+    AppTheme(6, "Зелёная", Color(0xFF071B12), Color(0xFF10291C), Color(0xFF173725), Color(0xFF168A43), Color(0xFF64C96B), Color(0xFF9AE58C), Color(0xFFA8C5AC), Color(0xFFF0FFF1), Color.White),
+    AppTheme(7, "Лавандовая", Color(0xFF241A38), Color(0xFF35264D), Color(0xFF44315D), Color(0xFF8B62C8), Color(0xFFE19ACD), Color(0xFFE9B9F4), Color(0xFFD0C0DC), Color(0xFFFFF5FF), Color.White),
+    AppTheme(8, "Ледяная", Color(0xFFEAF5FF), Color(0xFFFFFFFF), Color(0xFFDCEEFF), Color(0xFF0878E8), Color(0xFF49C7F5), Color(0xFF2E9EF0), Color(0xFF526D85), Color(0xFF122B42), Color.White),
+    AppTheme(9, "Бирюзовый неон", Color(0xFF03151C), Color(0xFF0B2630), Color(0xFF10333D), Color(0xFF00AFC1), Color(0xFFB22BFF), Color(0xFF36E5E8), Color(0xFF9ABCC4), Color(0xFFF0FFFF), Color(0xFF00191D))
+)
+
+@Composable
+private fun ThemeChoiceDialog(selectedId: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Темы оформления") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                appThemes.forEach { theme ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(theme.card).clickable { onSelect(theme.id) }
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(theme.background), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(15.dp).clip(RoundedCornerShape(5.dp)).background(theme.primary))
+                        }
+                        Text(theme.name, modifier = Modifier.weight(1f), color = theme.text, fontSize = 14.sp)
+                        if (selectedId == theme.id) Text("✓", color = theme.secondary, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } }
+    )
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
-                    primary = Color(0xFF9B5CFF),
+                    primary = palette.primary,
                     onPrimary = Color.White,
-                    secondary = Color(0xFF42C8FF),
-                    background = Color(0xFF080B20),
-                    surface = Color(0xFF151A35),
-                    onSurface = Color(0xFFF7F4FF)
+                    secondary = palette.secondary,
+                    background = palette.background,
+                    surface = palette.surface,
+                    onSurface = palette.text
                 )
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF080B20)) {
@@ -119,6 +172,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PhotoOrderScreen() {
     val context = LocalContext.current
+    var selectedThemeId by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 3).coerceIn(0, 9)) }
+    val palette = appThemes[selectedThemeId]
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var showThemePicker by remember { mutableStateOf(false) }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -189,10 +246,30 @@ private fun PhotoOrderScreen() {
         }
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = palette.surface,
+                drawerContentColor = palette.text
+            ) {
+                Text("Меню", modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = palette.text)
+                TextButton(
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        showThemePicker = true
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                ) {
+                    Text("🎨  Темы оформления", modifier = Modifier.fillMaxWidth(), color = palette.text, fontSize = 16.sp)
+                }
+            }
+        }
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080B20))
+            .background(palette.background)
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
@@ -205,12 +282,12 @@ private fun PhotoOrderScreen() {
                 AsyncImage(
                     model = R.drawable.fotoporyadok_mark,
                     contentDescription = "Знак ФотоПорядка",
-                    modifier = Modifier.size(28.dp).clip(RoundedCornerShape(7.dp)),
+                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).clickable { scope.launch { drawerState.open() } },
                     contentScale = ContentScale.Crop
                 )
                 Column {
-                    Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
+                    Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = palette.text)
+                    Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = palette.accent, fontWeight = FontWeight.Bold)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -226,7 +303,7 @@ private fun PhotoOrderScreen() {
                         } finally { checkingUpdate = false }
                     }
                 }, enabled = !checkingUpdate && !downloadingUpdate) {
-                    Text(if (checkingUpdate) "Проверка…" else "Обновить", fontSize = 13.sp, color = Color(0xFFB99AFF))
+                    Text(if (checkingUpdate) "Проверка…" else "Обновить", fontSize = 13.sp, color = palette.accent)
                 }
                 TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
                     Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
@@ -236,7 +313,7 @@ private fun PhotoOrderScreen() {
         if (selectedPage != 0) {
             Text(
                 "Фото и видео на телефоне — в удобном порядке",
-                color = Color(0xFFAAA6C7),
+                color = palette.muted,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
@@ -273,7 +350,7 @@ private fun PhotoOrderScreen() {
         } else if (!hasPermission) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
+                colors = CardDefaults.cardColors(containerColor = palette.card)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -297,13 +374,13 @@ private fun PhotoOrderScreen() {
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-                    .clip(RoundedCornerShape(11.dp)).background(Color(0xFF11152E)).padding(3.dp),
+                    .clip(RoundedCornerShape(11.dp)).background(palette.surface).padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
                     Box(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                            .background(if (selectedTab == index) Color(0xFF5427D8) else Color.Transparent)
+                            .background(if (selectedTab == index) palette.primary else Color.Transparent)
                             .clickable { selectedTab = index }.padding(vertical = 5.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -347,7 +424,7 @@ private fun PhotoOrderScreen() {
                     search.isNotBlank() -> "Найдено: ${visibleMedia.size}"
                     else -> "Показано: ${visibleMedia.size}"
                 },
-                color = Color(0xFF5F5A54),
+                color = palette.muted,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(bottom = 3.dp)
             )
@@ -385,7 +462,7 @@ private fun PhotoOrderScreen() {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(1f)
-                                            .background(Color(0xFF24234D)),
+                                            .background(palette.surface),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = Color(0xFFBDB3FF))
@@ -405,7 +482,7 @@ private fun PhotoOrderScreen() {
                                     Text(item.name, maxLines = 1, fontWeight = FontWeight.Medium)
                                     Text(
                                         formatDate(item.dateSeconds),
-                                        color = Color(0xFF8E8AAE),
+                                        color = palette.muted,
                                         fontSize = 12.sp
                                     )
                                 }
@@ -423,7 +500,7 @@ private fun PhotoOrderScreen() {
             listOf("⌂  Главная", "✨  Умная сортировка").forEachIndexed { index, label ->
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (selectedPage == index) Color(0xFF5427D8) else Color.Transparent)
+                        .background(if (selectedPage == index) palette.primary else Color.Transparent)
                         .clickable { selectedPage = index }.padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) { Text(label, color = Color.White, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.Bold else FontWeight.Normal) }
@@ -463,12 +540,24 @@ private fun PhotoOrderScreen() {
         )
     }
 
+    if (showThemePicker) {
+        ThemeChoiceDialog(
+            selectedId = selectedThemeId,
+            onSelect = { id ->
+                selectedThemeId = id
+                context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).edit().putInt("theme_id", id).apply()
+            },
+            onDismiss = { showThemePicker = false }
+        )
+    }
+
     selectedViewerIndex?.let { index ->
         FullscreenMediaViewer(
             media = visibleMedia,
             initialIndex = index,
             onClose = { selectedViewerIndex = null }
         )
+    }
     }
 }
 
@@ -582,7 +671,7 @@ private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text = if (selected) "✓ $label" else label,
-            color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFFAAA6C7),
+            color = if (selected) palette.primary else palette.muted,
             fontSize = 11.sp
         )
     }
