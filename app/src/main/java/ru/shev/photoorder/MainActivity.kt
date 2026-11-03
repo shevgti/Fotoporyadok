@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -106,6 +108,11 @@ private fun PhotoOrderScreen() {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedPhoto by remember { mutableStateOf<MediaItem?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var updateMessage by remember { mutableStateOf<String?>(null) }
+    var checkingUpdate by remember { mutableStateOf(false) }
+    var downloadingUpdate by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -143,7 +150,7 @@ private fun PhotoOrderScreen() {
             .padding(horizontal = 16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -158,14 +165,30 @@ private fun PhotoOrderScreen() {
                     Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
                 }
             }
-            TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
-                Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = {
+                    scope.launch {
+                        checkingUpdate = true
+                        updateMessage = null
+                        try {
+                            updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
+                            if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия."
+                        } catch (error: Exception) {
+                            updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
+                        } finally { checkingUpdate = false }
+                    }
+                }, enabled = !checkingUpdate && !downloadingUpdate) {
+                    Text(if (checkingUpdate) "Проверка…" else "Обновить", fontSize = 13.sp, color = Color(0xFFB99AFF))
+                }
+                TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
+                    Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
+                }
             }
         }
         Text(
             "Фото и видео на телефоне — в удобном порядке",
             color = Color(0xFFAAA6C7),
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier.padding(bottom = 6.dp)
         )
 
         if (!hasPermission) {
@@ -186,7 +209,7 @@ private fun PhotoOrderScreen() {
             }
         } else {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), Color(0xFF5427D8))
@@ -205,7 +228,7 @@ private fun PhotoOrderScreen() {
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
                 singleLine = true,
                 label = { Text("Поиск по названию") }
             )
@@ -293,6 +316,38 @@ private fun PhotoOrderScreen() {
         }
     }
 
+    updateMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { updateMessage = null },
+            confirmButton = { TextButton(onClick = { updateMessage = null }) { Text("Понятно") } },
+            title = { Text("Обновление приложения") },
+            text = { Text(message) }
+        )
+    }
+
+    updateInfo?.let { update ->
+        AlertDialog(
+            onDismissRequest = { if (!downloadingUpdate) updateInfo = null },
+            confirmButton = {
+                TextButton(enabled = !downloadingUpdate, onClick = {
+                    scope.launch {
+                        downloadingUpdate = true
+                        try {
+                            val started = AppUpdater.downloadAndInstall(context, update)
+                            if (started) updateInfo = null
+                            else updateMessage = "Разреши установку приложений для ФотоПорядка в настройках. Вернись сюда и снова нажми «Скачать и установить»."
+                        } catch (error: Exception) {
+                            updateMessage = "Не удалось установить обновление: ${error.message ?: "ошибка"}"
+                        } finally { downloadingUpdate = false }
+                    }
+                }) { Text(if (downloadingUpdate) "Скачиваем…" else "Скачать и установить") }
+            },
+            dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
+            title = { Text("Доступна версия ${update.versionName}") },
+            text = { Text(update.notes.ifBlank { "Доступна новая версия приложения." }) }
+        )
+    }
+
     selectedPhoto?.let { item ->
         AlertDialog(
             onDismissRequest = { selectedPhoto = null },
@@ -323,7 +378,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
         colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39))
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp, horizontal = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(label, color = Color(0xFFAAA6C7), fontSize = 9.sp, fontWeight = FontWeight.Bold)
