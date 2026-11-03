@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape android:shape="rectangle"><gradient android:angle="135" android:startColor="#FF24140D" android:endColor="#FF754322" android:type="linear" /></shape></item>
-    <item android:gravity="top|end" android:width="250dp" android:height="250dp"><shape android:shape="oval"><solid android:color="#50F0D1A5" /></shape></item>
-    <item android:gravity="bottom|start" android:width="190dp" android:height="190dp"><shape android:shape="oval"><solid android:color="#30A86A3D" /></shape></item>
-    <item android:gravity="center|end" android:width="120dp" android:height="120dp"><shape android:shape="oval"><stroke android:width="2dp" android:color="#28FFFFFF" /><solid android:color="#08FFFFFF" /></shape></item>
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="540dp" android:height="960dp"
+    android:viewportWidth="540" android:viewportHeight="960">
+    <path android:fillColor="#60F0D1A5" android:pathData="M390,35 A145,145 0,1 0,390,325 A145,145 0,1 0,390,35 Z" />
+    <path android:fillColor="#30A86A3D" android:pathData="M-90,610 A185,185 0,1 0,280,610 A185,185 0,1 0,-90,610 Z" />
+    <path android:fillColor="#30E2B77E" android:pathData="M210,510 C300,420 390,430 560,520 L560,690 C410,610 320,620 210,720 Z" />
+    <path android:fillColor="#18FFFFFF" android:pathData="M0,160 C140,80 240,90 380,170 C440,205 490,210 560,175 L560,220 C450,275 380,255 350,235 C210,150 130,150 0,225 Z" />
+</vector>
