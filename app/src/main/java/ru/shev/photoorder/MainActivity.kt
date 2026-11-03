@@ -425,7 +425,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     Box(
                         modifier = Modifier.fillMaxWidth().shadow(5.dp, RoundedCornerShape(10.dp))
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (updateInfo != null) Brush.horizontalGradient(listOf(Color(0xFFB8F36B), Color(0xFF72C936))) else Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                            .background(if (updateInfo != null) Color(0xFF34C759) else palette.primary)
                             .clickable {
                                 scope.launch { drawerState.close() }
                                 checkingUpdate = true
@@ -443,7 +443,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     ) {
                         Text(
                             if (updateInfo != null) "↻  Доступно обновление " + updateInfo!!.versionName else "↻  Обновление " + BuildConfig.VERSION_NAME,
-                            color = if (updateInfo != null) Color(0xFF17210A) else palette.onPrimary,
+                            color = if (updateInfo != null) Color.White else palette.onPrimary,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1
                         )
                     }
@@ -519,7 +519,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     enabled = !checkingUpdate && !downloadingUpdate,
                     contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
                 ) {
-                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(RoundedCornerShape(16.dp)).background(if (hasNewVersion) Color(0xFFA8E85A) else palette.surface), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (hasNewVersion) Color(0xFF34C759) else palette.surface), contentAlignment = Alignment.Center) {
                         Text(
                             when {
                                 checkingUpdate -> "Проверка…"
@@ -530,7 +530,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                             fontSize = 10.sp, maxLines = 1, softWrap = false,
                             overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                             fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
-                            color = if (hasNewVersion) Color(0xFF17210A) else palette.accent
+                            color = if (hasNewVersion) Color.White else palette.accent
                         )
                     }
                 }
@@ -692,7 +692,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                             .background(palette.surface),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = palette.accent)
+                                        Text("▶  ВИДЕО", fontWeight = FontWeight.SemiBold, color = palette.accent)
                                     }
                                 } else {
                                     AsyncImage(
@@ -957,10 +957,10 @@ private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () ->
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color, palette: AppTheme) {
     Card(
-        modifier = modifier.shadow(7.dp, RoundedCornerShape(15.dp)),
-        shape = RoundedCornerShape(15.dp),
+        modifier = modifier.shadow(2.dp, RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = palette.card),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -978,8 +978,7 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
     Box(
         modifier = Modifier.height(30.dp).clip(RoundedCornerShape(16.dp))
             .background(
-                if (selected) Brush.horizontalGradient(listOf(palette.primary, palette.secondary))
-                else Brush.horizontalGradient(listOf(palette.surface, palette.card))
+                if (selected) palette.primary else palette.surface
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 6.dp),
