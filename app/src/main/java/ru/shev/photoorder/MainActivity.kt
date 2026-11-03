@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
@@ -79,6 +80,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.sp
@@ -157,46 +160,6 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
     }
 }
 
-@Composable
-private fun ThemeChoiceDialog(selectedId: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Выбери скин") },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.heightIn(max = 540.dp),
-                contentPadding = PaddingValues(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(appThemes, key = { it.id }) { theme ->
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                            .clip(SlantedButtonShape())
-                            .background(Brush.verticalGradient(listOf(theme.backgroundEnd, theme.background)))
-                            .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.72f)
-                            .clickable { onSelect(theme.id) }
-                            .padding(horizontal = 10.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text((theme.id + 1).toString().padStart(2, '0'), color = theme.accent, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                            Text(theme.name, color = theme.text, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            listOf(theme.primary, theme.secondary, theme.accent).forEach { shade ->
-                                Box(Modifier.weight(1f).height(7.dp).clip(SlantedButtonShape()).background(shade))
-                            }
-                        }
-                        if (selectedId == theme.id) Text("✓ Выбрано", color = theme.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } }
-    )
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -339,12 +302,43 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
-                        .clickable {
-                            scope.launch { drawerState.close() }
-                            showThemePicker = true
-                        }.padding(horizontal = 14.dp, vertical = 13.dp)
+                        .clickable { showThemePicker = !showThemePicker }
+                        .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
-                    Text("🎨  Скины и темы оформления", color = palette.onPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(if (showThemePicker) "🎨  Скрыть скины ▲" else "🎨  Скины и темы оформления ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                if (showThemePicker) {
+                    Text("Выбери оформление", modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 8.dp), color = palette.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 430.dp).padding(horizontal = 10.dp),
+                        contentPadding = PaddingValues(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(appThemes, key = { it.id }) { theme ->
+                            Column(
+                                modifier = Modifier.fillMaxWidth().height(112.dp)
+                                    .clip(SlantedButtonShape())
+                                    .background(Brush.verticalGradient(listOf(theme.backgroundEnd, theme.background)))
+                                    .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.62f)
+                                    .clickable { onThemeChange(theme.id) }
+                                    .padding(horizontal = 9.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text((theme.id + 1).toString().padStart(2, '0') + " · " + theme.name, color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        listOf(theme.primary, theme.secondary, theme.accent).forEach { shade ->
+                                            Box(Modifier.weight(1f).height(6.dp).clip(SlantedButtonShape()).background(shade))
+                                        }
+                                    }
+                                }
+                                if (themeId == theme.id) Text("✓ Выбрано", color = theme.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    TextButton(onClick = { showThemePicker = false }, modifier = Modifier.align(Alignment.End).padding(end = 12.dp)) { Text("Готово", color = palette.accent) }
                 }
             }
         }
@@ -397,20 +391,20 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     enabled = !checkingUpdate && !downloadingUpdate,
                     contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
                 ) {
-                    Text(
-                        when {
-                            checkingUpdate -> "Проверка…"
-                            hasNewVersion -> "Доступно ${updateInfo?.versionName}"
-                            else -> "Обновление ${BuildConfig.VERSION_NAME}"
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
-                        color = if (hasNewVersion) Color(0xFF17210A) else palette.accent,
-                        modifier = Modifier
-                            .clip(SlantedButtonShape())
-                            .background(if (hasNewVersion) Color(0xFFA8E85A) else palette.surface)
-                            .padding(horizontal = 7.dp, vertical = 5.dp)
-                    )
+                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(SlantedButtonShape()).background(if (hasNewVersion) Color(0xFFA8E85A) else palette.surface), contentAlignment = Alignment.Center) {
+                        Text(
+                            when {
+                                checkingUpdate -> "Проверка…"
+                                hasNewVersion -> "Доступно ${updateInfo?.versionName}"
+                                else -> "Обновление ${BuildConfig.VERSION_NAME}"
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            fontSize = 10.sp, maxLines = 1, softWrap = false,
+                            overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                            fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
+                            color = if (hasNewVersion) Color(0xFF17210A) else palette.accent
+                        )
+                    }
                 }
                 TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
                     Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
@@ -642,14 +636,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
             title = { Text("Доступна версия ${update.versionName}") },
             text = { Text((update.notes.substringBefore("\n\n").ifBlank { "Доступна новая версия приложения." }) + "\n\nФайл: app-release.apk\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName) }
-        )
-    }
-
-    if (showThemePicker) {
-        ThemeChoiceDialog(
-            selectedId = themeId,
-            onSelect = onThemeChange,
-            onDismiss = { showThemePicker = false }
         )
     }
 
