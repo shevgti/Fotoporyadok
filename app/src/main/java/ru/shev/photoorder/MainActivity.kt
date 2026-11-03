@@ -247,6 +247,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
     var updateMessage by remember { mutableStateOf<String?>(null) }
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
@@ -255,6 +256,18 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var sortStatus by remember { mutableStateOf<String?>(null) }
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        checkingUpdate = true
+        try {
+            updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
+            showUpdateDialog = updateInfo != null
+        } catch (_: Exception) {
+            // Проверка при запуске не должна мешать работе с медиатекой.
+        } finally {
+            checkingUpdate = false
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -354,19 +367,42 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = {
-                    scope.launch {
-                        checkingUpdate = true
-                        updateMessage = null
-                        try {
-                            updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
-                            if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия."
-                        } catch (error: Exception) {
-                            updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
-                        } finally { checkingUpdate = false }
-                    }
-                }, enabled = !checkingUpdate && !downloadingUpdate) {
-                    Text(if (checkingUpdate) "Проверка…" else "Обновить", fontSize = 13.sp, color = palette.accent)
+                val hasNewVersion = updateInfo != null
+                TextButton(
+                    onClick = {
+                        if (hasNewVersion) {
+                            showUpdateDialog = true
+                        } else {
+                            scope.launch {
+                                checkingUpdate = true
+                                updateMessage = null
+                                try {
+                                    updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
+                                    if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия."
+                                    else showUpdateDialog = true
+                                } catch (error: Exception) {
+                                    updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
+                                } finally { checkingUpdate = false }
+                            }
+                        }
+                    },
+                    enabled = !checkingUpdate && !downloadingUpdate,
+                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        when {
+                            checkingUpdate -> "Проверка…"
+                            hasNewVersion -> "Доступно ${updateInfo?.versionName}"
+                            else -> "Обновление ${BuildConfig.VERSION_NAME}"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
+                        color = if (hasNewVersion) Color(0xFF17210A) else palette.accent,
+                        modifier = Modifier
+                            .clip(SlantedButtonShape())
+                            .background(if (hasNewVersion) Color(0xFFA8E85A) else palette.surface)
+                            .padding(horizontal = 7.dp, vertical = 5.dp)
+                    )
                 }
                 TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
                     Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
@@ -578,16 +614,16 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         )
     }
 
-    updateInfo?.let { update ->
+    updateInfo?.takeIf { showUpdateDialog }?.let { update ->
         AlertDialog(
-            onDismissRequest = { if (!downloadingUpdate) updateInfo = null },
+            onDismissRequest = { if (!downloadingUpdate) showUpdateDialog = false },
             confirmButton = {
                 TextButton(enabled = !downloadingUpdate, onClick = {
                     scope.launch {
                         downloadingUpdate = true
                         try {
                             val started = AppUpdater.downloadAndInstall(context, update)
-                            if (started) updateInfo = null
+                            if (started) { updateInfo = null; showUpdateDialog = false }
                             else updateMessage = "Разреши установку приложений для ФотоПорядка в настройках. Вернись сюда и снова нажми «Скачать и установить»."
                         } catch (error: Exception) {
                             updateMessage = "Не удалось установить обновление: ${error.message ?: "ошибка"}"
@@ -597,7 +633,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             },
             dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
             title = { Text("Доступна версия ${update.versionName}") },
-            text = { Text(update.notes.ifBlank { "Доступна новая версия приложения." }) }
+            text = { Text((update.notes.substringBefore("\\n\\n").ifBlank { "Доступна новая версия приложения." }) + "\\n\\nФайл: app-release.apk\\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName) }
         )
     }
 
