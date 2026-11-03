@@ -2,6 +2,9 @@ package ru.shev.photoorder
 
 import android.Manifest
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
@@ -86,6 +89,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -200,6 +205,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showThemePicker by remember { mutableStateOf(false) }
+    var notificationsEnabled by remember { mutableStateOf(appNotificationsEnabled(context)) }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -227,6 +233,14 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
                 if (latest != null && latest.versionCode != updateInfo?.versionCode) {
                     updateInfo = latest
+                    if (appNotificationsEnabled(context)) {
+                        postAppNotification(
+                            context,
+                            "Доступно обновление ФотоПорядка",
+                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
+                            1002
+                        )
+                    }
                     showUpdateDialog = true
                 } else if (latest == null) {
                     updateInfo = null
@@ -244,6 +258,16 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         hasPermission = hasMediaPermission(context)
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        notificationsEnabled = appNotificationsEnabled(context)
+        if (notificationsEnabled) {
+            createAppNotificationChannel(context)
+            postAppNotification(context, "ФотоПорядок", "Уведомления включены. Теперь приложение сможет сообщать о важных событиях.", 1001)
+        }
     }
 
     val sortWriteLauncher = rememberLauncherForActivityResult(
@@ -299,6 +323,33 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 drawerContentColor = palette.text
             ) {
                 Text("Меню", modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = palette.text)
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                        .clickable {
+                            if (Build.VERSION.SDK_INT >= 33 &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                notificationsEnabled = appNotificationsEnabled(context)
+                                if (notificationsEnabled) {
+                                    postAppNotification(context, "ФотоПорядок", "Уведомления работают.", 1001)
+                                } else {
+                                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            }
+                        }
+                        .padding(horizontal = 14.dp, vertical = 13.dp)
+                ) {
+                    Text(
+                        if (notificationsEnabled) "🔔  Уведомления включены" else "🔕  Включить уведомления",
+                        color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold
+                    )
+                }
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
@@ -779,6 +830,56 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
             color = if (selected) palette.onPrimary else palette.muted,
             fontSize = 11.sp
         )
+    }
+}
+
+
+private const val APP_NOTIFICATION_CHANNEL = "photoorder_updates"
+
+private fun appNotificationsEnabled(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) return false
+    return NotificationManagerCompat.from(context).areNotificationsEnabled()
+}
+
+private fun createAppNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            APP_NOTIFICATION_CHANNEL,
+            "Уведомления ФотоПорядка",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Обновления приложения и важные события медиатеки"
+        }
+        manager.createNotificationChannel(channel)
+    }
+}
+
+private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int) {
+    if (!appNotificationsEnabled(context)) return
+    createAppNotificationChannel(context)
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val pendingIntent = launchIntent?.let {
+        PendingIntent.getActivity(
+            context, notificationId, it,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+    val notification = NotificationCompat.Builder(context, APP_NOTIFICATION_CHANNEL)
+        .setSmallIcon(R.mipmap.ic_launcher)
+        .setContentTitle(title)
+        .setContentText(message)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setAutoCancel(true)
+        .apply { if (pendingIntent != null) setContentIntent(pendingIntent) }
+        .build()
+    try {
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
+    } catch (_: SecurityException) {
+        // Permission can be revoked in system settings at any time.
     }
 }
 
