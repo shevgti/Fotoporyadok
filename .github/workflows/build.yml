@@ -59,11 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           cp app/build/outputs/apk/release/app-release.apk app-release.apk
-          if gh release view v0.5 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload v0.5 app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          if gh release view v0.6 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload v0.6 app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create v0.5 app-release.apk \
+            gh release create v0.6 app-release.apk \
               --repo "${GITHUB_REPOSITORY}" \
-              --title "ФотоПорядок 0.5" \
-              --notes "versionCode: 5"
+              --title "ФотоПорядок 0.6" \
+              --notes "versionCode: 6"
           fi

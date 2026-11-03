@@ -352,7 +352,8 @@ private fun PhotoOrderScreen() {
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(140.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
