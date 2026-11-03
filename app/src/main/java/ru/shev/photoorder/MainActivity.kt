@@ -10,6 +10,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.MediaItem as PlayerMediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -33,6 +39,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,6 +55,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +70,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
@@ -116,7 +126,7 @@ private fun PhotoOrderScreen() {
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
     var selectedAlbumId by remember { mutableStateOf<String?>(null) }
-    var selectedPhoto by remember { mutableStateOf<MediaItem?>(null) }
+    var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var updateMessage by remember { mutableStateOf<String?>(null) }
@@ -192,13 +202,17 @@ private fun PhotoOrderScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier.clip(RoundedCornerShape(15.dp))
-                        .background(Color(0xFF5427D8))
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) { Text("◉", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+                AsyncImage(
+                    model = R.drawable.fotoporyadok_mark,
+                    contentDescription = "Знак ФотоПорядка",
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
                 Column {
-                    Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(Color(0xFF2196F3)))
+                        Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                     Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = Color(0xFF9D8CFF), fontWeight = FontWeight.Bold)
                 }
             }
@@ -365,8 +379,7 @@ private fun PhotoOrderScreen() {
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
                             modifier = Modifier.clickable {
-                                if (item.isVideo) openVideo(context, item.uri)
-                                else selectedPhoto = item
+                                selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
                             },
                         ) {
                             Column {
@@ -453,25 +466,96 @@ private fun PhotoOrderScreen() {
         )
     }
 
-    selectedPhoto?.let { item ->
-        AlertDialog(
-            onDismissRequest = { selectedPhoto = null },
-            confirmButton = {
-                TextButton(onClick = { selectedPhoto = null }) { Text("Закрыть") }
-            },
-            title = { Text(item.name, maxLines = 1) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AsyncImage(
-                        model = item.uri,
-                        contentDescription = item.name,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                    Text("Дата: ${formatDate(item.dateSeconds)}")
-                }
-            }
+    selectedViewerIndex?.let { index ->
+        FullscreenMediaViewer(
+            media = visibleMedia,
+            initialIndex = index,
+            onClose = { selectedViewerIndex = null }
         )
+    }
+}
+
+@Composable
+private fun FullscreenMediaViewer(
+    media: List<MediaItem>,
+    initialIndex: Int,
+    onClose: () -> Unit
+) {
+    if (media.isEmpty()) return
+    var currentIndex by remember(media, initialIndex) { mutableStateOf(initialIndex.coerceIn(media.indices)) }
+    val item = media[currentIndex]
+    var dragDistance by remember { mutableStateOf(0f) }
+
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black)
+                .pointerInput(currentIndex, media.size) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (dragDistance < -80f && currentIndex < media.lastIndex) currentIndex++
+                            else if (dragDistance > 80f && currentIndex > 0) currentIndex--
+                            dragDistance = 0f
+                        },
+                        onHorizontalDrag = { change, amount ->
+                            dragDistance += amount
+                            change.consume()
+                        }
+                    )
+                }
+        ) {
+            if (item.isVideo) {
+                val context = LocalContext.current
+                val player = remember(item.uri) {
+                    ExoPlayer.Builder(context).build().apply {
+                        setMediaItem(PlayerMediaItem.fromUri(item.uri))
+                        prepare()
+                        playWhenReady = true
+                    }
+                }
+                DisposableEffect(player) {
+                    onDispose { player.release() }
+                }
+                AndroidView(
+                    factory = { viewContext ->
+                        PlayerView(viewContext).apply {
+                            this.player = player
+                            useController = true
+                        }
+                    },
+                    update = { it.player = player },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Row(
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                    .background(Color(0x99000000)).statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onClose) { Text("✕ Закрыть", color = Color.White) }
+                Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
+                Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
+            }
+            if (!item.isVideo) {
+                Text(
+                    "‹  Свайп для перелистывания  ›",
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp)
+                )
+            }
+        }
     }
 }
 
