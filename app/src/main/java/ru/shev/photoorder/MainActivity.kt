@@ -63,6 +63,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -128,16 +129,8 @@ private data class AppTheme(
 )
 
 private val appThemes = listOf(
-    AppTheme(0, "Классический синий", Color(0xFF071A35), Color(0xFF123F73), Color(0xFF102B4D), Color(0xFF173B63), Color(0xFF087BFF), Color(0xFF49C8FF), Color(0xFF8BD9FF), Color(0xFF9BB8D5), Color(0xFFF4FAFF), Color.White),
-    AppTheme(1, "Весенняя зелень", Color(0xFF092414), Color(0xFF286B35), Color(0xFF143B23), Color(0xFF1D4C2B), Color(0xFF279447), Color(0xFF9FE870), Color(0xFFD4F6A5), Color(0xFFB7D5B4), Color(0xFFF4FFF0), Color.White),
-    AppTheme(2, "Солнечное золото", Color(0xFF4A2607), Color(0xFFE99A16), Color(0xFF74400A), Color(0xFF96510B), Color(0xFFFFC02E), Color(0xFFFFE17A), Color(0xFFFFD46B), Color(0xFFE9D1A5), Color(0xFFFFFAE9), Color(0xFF402000)),
-    AppTheme(3, "Ледяная свежесть", Color(0xFF0A2348), Color(0xFF7FBDEB), Color(0xFF183A60), Color(0xFF244E78), Color(0xFF9CCFF8), Color(0xFFE3F5FF), Color(0xFFBDE7FF), Color(0xFFB5D1E7), Color(0xFFF7FCFF), Color(0xFF15304D)),
-    AppTheme(4, "Графитовая ночь", Color(0xFF080B12), Color(0xFF242B38), Color(0xFF171D28), Color(0xFF222B39), Color(0xFF52647C), Color(0xFFD5B66D), Color(0xFFE8D49B), Color(0xFF9AA7B8), Color(0xFFF4F6FA), Color(0xFF10151D)),
-    AppTheme(5, "Розовый сад", Color(0xFF35102D), Color(0xFFB33F75), Color(0xFF571B46), Color(0xFF742653), Color(0xFFE45D9B), Color(0xFFFFB0D0), Color(0xFFFFD0E2), Color(0xFFE1B6CD), Color(0xFFFFF5FA), Color(0xFF47142F)),
-    AppTheme(6, "Бирюзовая лагуна", Color(0xFF033D4B), Color(0xFF08A6B5), Color(0xFF075563), Color(0xFF0A6878), Color(0xFF12C5D2), Color(0xFF9AF4ED), Color(0xFF8CEFE8), Color(0xFFA9D8D9), Color(0xFFF0FFFF), Color(0xFF00343D)),
-    AppTheme(7, "Фиолетовый вечер", Color(0xFF090B31), Color(0xFF322078), Color(0xFF171849), Color(0xFF24245F), Color(0xFF533DDA), Color(0xFFB5A5FF), Color(0xFF9B8CFF), Color(0xFFB3B4D8), Color(0xFFF4F3FF), Color.White),
-    AppTheme(8, "Кофейное тепло", Color(0xFF24140D), Color(0xFF754322), Color(0xFF3C2419), Color(0xFF543322), Color(0xFFA86A3D), Color(0xFFE2B77E), Color(0xFFF0D1A5), Color(0xFFD0B7A1), Color(0xFFFFF7EF), Color(0xFF2C1A10)),
-    AppTheme(9, "Северное сияние", Color(0xFF042B35), Color(0xFF087F78), Color(0xFF0B4148), Color(0xFF10575A), Color(0xFF00B9A7), Color(0xFF8DF5D1), Color(0xFF72E9D5), Color(0xFFA8D6D0), Color(0xFFF0FFFC), Color(0xFF003B3A))
+    AppTheme(0, "Apple — светлая", Color(0xFFF2F2F7), Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFF007AFF), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF8E8E93), Color(0xFF1C1C1E), Color.White),
+    AppTheme(1, "Apple — тёмная", Color(0xFF000000), Color(0xFF1C1C1E), Color(0xFF1C1C1E), Color(0xFF2C2C2E), Color(0xFF0A84FF), Color(0xFF64D2FF), Color(0xFF0A84FF), Color(0xFF8E8E93), Color(0xFFF5F5F7), Color.White)
 )
 
 
@@ -181,18 +174,17 @@ class MainActivity : ComponentActivity() {
         createAppNotificationChannel(this)
         setContent {
             var selectedThemeId by remember {
-                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).let { oldId -> when (oldId) { 0 -> 0; 1 -> 1; 2, 9, 14 -> 2; 4 -> 3; 5, 8, 12 -> 4; 6, 13 -> 5; 7, 10, 18 -> 6; 15, 19 -> 7; 17 -> 8; 16 -> 9; else -> 0 } })
+                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).takeIf { it in 0..1 } ?: 0)
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = palette.primary,
-                    onPrimary = palette.onPrimary,
-                    secondary = palette.secondary,
-                    background = palette.background,
-                    surface = palette.surface,
-                    onSurface = palette.text
-                )
+                colorScheme = if (selectedThemeId == 0) {
+                    lightColorScheme(primary = palette.primary, onPrimary = palette.onPrimary, secondary = palette.secondary,
+                        background = palette.background, surface = palette.surface, onSurface = palette.text)
+                } else {
+                    darkColorScheme(primary = palette.primary, onPrimary = palette.onPrimary, secondary = palette.secondary,
+                        background = palette.background, surface = palette.surface, onSurface = palette.text)
+                }
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = palette.background) {
                     PhotoOrderScreen(
@@ -339,10 +331,10 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 drawerContainerColor = palette.surface,
                 drawerContentColor = palette.text
             ) {
-                Text("Меню", modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = palette.text)
+                Text("Настройки", modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = palette.text)
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
-                        .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                        .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable {
                             if (Build.VERSION.SDK_INT >= 33 &&
                                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -369,7 +361,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 }
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp)
-                        .clip(SlantedButtonShape()).background(palette.card)
+                        .clip(RoundedCornerShape(16.dp)).background(palette.card)
                         .clickable {
                             notificationHistory = loadNotificationHistory(context)
                             showNotificationCenter = true
@@ -384,14 +376,14 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 }
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
-                        .clip(SlantedButtonShape()).background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                        .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable { showThemePicker = !showThemePicker }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
-                    Text(if (showThemePicker) "🎨  Скрыть скины ▲" else "🎨  Скины и темы оформления ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(if (showThemePicker) "🎨  Скрыть оформление ▲" else "🎨  Оформление ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
                 if (showThemePicker) {
-                    Text("Выбери оформление", modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 8.dp), color = palette.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("Внешний вид", modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 8.dp), color = palette.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(5),
                         modifier = Modifier.fillMaxWidth().heightIn(max = 190.dp).padding(horizontal = 8.dp),
@@ -404,19 +396,19 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                 modifier = Modifier.fillMaxWidth().height(78.dp)
                                     .shadow(if (themeId == theme.id) 8.dp else 3.dp, RoundedCornerShape(11.dp))
                                     .clip(RoundedCornerShape(11.dp))
-                                    .background(Brush.linearGradient(listOf(theme.secondary, theme.primary, theme.background)))
-                                    .paint(painterResource(themeWallpaperRes(theme.id)), contentScale = ContentScale.Crop, alpha = 0.28f)
+                                     .background(theme.surface)
+                                    
                                     .clickable { onThemeChange(theme.id) }
                                     .padding(horizontal = 4.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text((theme.id + 1).toString().padStart(2, '0'), color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(Brush.horizontalGradient(listOf(theme.primary, theme.secondary, theme.accent))))
+                                Text(theme.name.substringAfter("—").trim(), color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(theme.primary))
                                 if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
-                    Text("Нажми на цвет, чтобы применить тему", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
+                    Text("Выбери светлый или тёмный режим", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
                     TextButton(
                         onClick = {
                             showThemePicker = false
@@ -431,8 +423,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Box(
                         modifier = Modifier.fillMaxWidth().shadow(5.dp, RoundedCornerShape(10.dp))
-                            .clip(SlantedButtonShape())
-                            .background(if (updateInfo != null) Brush.horizontalGradient(listOf(Color(0xFFB8F36B), Color(0xFF72C936))) else Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (updateInfo != null) Color(0xFF34C759) else palette.primary)
                             .clickable {
                                 scope.launch { drawerState.close() }
                                 checkingUpdate = true
@@ -450,14 +442,14 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     ) {
                         Text(
                             if (updateInfo != null) "↻  Доступно обновление " + updateInfo!!.versionName else "↻  Обновление " + BuildConfig.VERSION_NAME,
-                            color = if (updateInfo != null) Color(0xFF17210A) else palette.onPrimary,
+                            color = if (updateInfo != null) Color.White else palette.onPrimary,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(9.dp))
-                                .clip(SlantedButtonShape()).background(palette.card)
+                                .clip(RoundedCornerShape(16.dp)).background(palette.card)
                                 .clickable { scope.launch { drawerState.close() }; showAboutDialog = true }
                                 .padding(horizontal = 6.dp, vertical = 10.dp),
                             contentAlignment = Alignment.Center
@@ -466,7 +458,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         }
                         Box(
                             modifier = Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(9.dp))
-                                .clip(SlantedButtonShape()).background(palette.card)
+                                .clip(RoundedCornerShape(16.dp)).background(palette.card)
                                 .clickable { scope.launch { drawerState.close() }; showExitDialog = true }
                                 .padding(horizontal = 6.dp, vertical = 10.dp),
                             contentAlignment = Alignment.Center
@@ -481,8 +473,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(palette.backgroundEnd, palette.background)))
-            .paint(painterResource(themeWallpaperRes(themeId)), contentScale = ContentScale.Crop, alpha = 0.16f)
+            .background(palette.background)
+            
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
@@ -500,7 +492,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 )
                 Column {
                     Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = palette.text)
-                    Text("ТВОЯ МЕДИАТЕКА", fontSize = 9.sp, color = palette.accent, fontWeight = FontWeight.Bold)
+                    Text("ФОТО И ВИДЕО", fontSize = 10.sp, color = palette.muted, fontWeight = FontWeight.Medium)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -526,7 +518,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     enabled = !checkingUpdate && !downloadingUpdate,
                     contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
                 ) {
-                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(SlantedButtonShape()).background(if (hasNewVersion) Color(0xFFA8E85A) else palette.surface), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (hasNewVersion) Color(0xFF34C759) else palette.surface), contentAlignment = Alignment.Center) {
                         Text(
                             when {
                                 checkingUpdate -> "Проверка…"
@@ -537,12 +529,12 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                             fontSize = 10.sp, maxLines = 1, softWrap = false,
                             overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                             fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
-                            color = if (hasNewVersion) Color(0xFF17210A) else palette.accent
+                            color = if (hasNewVersion) Color.White else palette.accent
                         )
                     }
                 }
                 TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
-                    Text("↻", fontSize = 22.sp, color = Color(0xFFB99AFF))
+                    Text("↻", fontSize = 22.sp, color = palette.accent)
                 }
             }
         }
@@ -581,6 +573,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     }
                 },
                 status = sortStatus,
+                palette = palette,
                 modifier = Modifier.weight(1f)
             )
         } else if (!hasPermission) {
@@ -602,23 +595,23 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), Color(0xFF5427D8))
-                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), palette.secondary)
-                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent)
+                StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), palette.accent, palette)
+                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
+                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-                    .clip(SlantedButtonShape()).background(palette.surface).padding(3.dp),
+                    .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
                     Box(
-                        modifier = Modifier.weight(1f).clip(SlantedButtonShape())
-                            .background(if (selectedTab == index) Brush.horizontalGradient(listOf(palette.primary, palette.secondary)) else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)))
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                             .background(if (selectedTab == index) palette.primary else Color.Transparent)
                             .clickable { selectedTab = index }.padding(vertical = 5.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(label, fontSize = 12.sp, color = Color.White,
+                        Text(label, fontSize = 12.sp, color = if (selectedTab == index) Color.White else palette.muted,
                             fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
@@ -629,11 +622,11 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = { selectedAlbumId = null }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                    Text(if (selectedAlbumId == null) "✓ Все альбомы" else "Все альбомы", color = if (selectedAlbumId == null) Color(0xFFB99AFF) else Color(0xFFAAA6C7), fontSize = 11.sp)
+                    Text(if (selectedAlbumId == null) "✓ Все альбомы" else "Все альбомы", color = if (selectedAlbumId == null) palette.accent else palette.muted, fontSize = 11.sp)
                 }
                 albums.forEach { album ->
                     TextButton(onClick = { selectedAlbumId = album.id }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Text(if (selectedAlbumId == album.id) "✓ ${album.name} (${album.count})" else "${album.name} (${album.count})", color = if (selectedAlbumId == album.id) Color(0xFFB99AFF) else Color(0xFFAAA6C7), fontSize = 11.sp, maxLines = 1)
+                        Text(if (selectedAlbumId == album.id) "✓ ${album.name} (${album.count})" else "${album.name} (${album.count})", color = if (selectedAlbumId == album.id) palette.accent else palette.muted, fontSize = 11.sp, maxLines = 1)
                     }
                 }
             }
@@ -685,7 +678,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
+                            colors = CardDefaults.cardColors(containerColor = palette.card),
                             modifier = Modifier.clickable {
                                 selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
                             },
@@ -699,7 +692,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                             .background(palette.surface),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.Bold, color = palette.accent)
+                                        Text("▶  ВИДЕО", fontWeight = FontWeight.SemiBold, color = palette.accent)
                                     }
                                 } else {
                                     AsyncImage(
@@ -713,7 +706,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                     )
                                 }
                                 Column(modifier = Modifier.padding(9.dp)) {
-                                    Text(item.name, maxLines = 1, fontWeight = FontWeight.Medium)
+                                    Text(item.name, maxLines = 1, fontWeight = FontWeight.Medium, color = palette.text)
                                     Text(
                                         formatDate(item.dateSeconds),
                                         color = palette.muted,
@@ -728,16 +721,16 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)
-                .clip(SlantedButtonShape()).background(palette.surface).padding(4.dp),
+                .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf("⌂  Главная", "✨  Умная сортировка").forEachIndexed { index, label ->
                 Box(
-                    modifier = Modifier.weight(1f).clip(SlantedButtonShape())
-                        .background(if (selectedPage == index) Brush.horizontalGradient(listOf(palette.primary, palette.secondary)) else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent)))
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+                         .background(if (selectedPage == index) palette.primary else Color.Transparent)
                         .clickable { selectedPage = index }.padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
-                ) { Text(label, color = Color.White, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.Bold else FontWeight.Normal) }
+                ) { Text(label, color = if (selectedPage == index) Color.White else palette.muted, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.SemiBold else FontWeight.Normal) }
             }
         }
     }
@@ -952,8 +945,8 @@ private fun FullscreenMediaViewer(
 @Composable
 private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxWidth().clip(SlantedButtonShape())
-            .background(Brush.horizontalGradient(listOf(palette.primary, palette.secondary)))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+            .background(palette.primary)
             .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 13.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -962,21 +955,20 @@ private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () ->
 }
 
 @Composable
-private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color) {
+private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color, palette: AppTheme) {
     Card(
-        modifier = modifier.shadow(7.dp, RoundedCornerShape(15.dp)),
-        shape = RoundedCornerShape(15.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF171B39)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 1.dp)
+        modifier = modifier.shadow(2.dp, RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = palette.card),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xFF30375C), Color(0xFF141A35))))
-                .padding(vertical = 7.dp, horizontal = 9.dp),
+                 .padding(vertical = 12.dp, horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(label, color = Color(0xFFBFC8E8), fontSize = 8.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = accent, fontSize = 19.sp, fontWeight = FontWeight.Black)
+            Text(label, color = palette.muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+            Text(value, color = palette.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -984,10 +976,9 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
 @Composable
 private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.height(30.dp).clip(SlantedButtonShape())
+        modifier = Modifier.height(30.dp).clip(RoundedCornerShape(16.dp))
             .background(
-                if (selected) Brush.horizontalGradient(listOf(palette.primary, palette.secondary))
-                else Brush.horizontalGradient(listOf(palette.surface, palette.card))
+                if (selected) palette.primary else palette.surface
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 6.dp),
@@ -995,8 +986,8 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
     ) {
         Text(
             text = if (selected) "✓ $label" else label,
-            color = if (selected) palette.onPrimary else palette.muted,
-            fontSize = 11.sp
+            color = if (selected) Color.White else palette.muted,
+            fontSize = 12.sp
         )
     }
 }
