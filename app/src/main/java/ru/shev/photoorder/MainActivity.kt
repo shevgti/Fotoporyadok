@@ -426,9 +426,9 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(top = 1.dp, bottom = 1.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                SortButton("Новые", sort == MediaSort.NEWEST) { sort = MediaSort.NEWEST }
-                SortButton("Старые", sort == MediaSort.OLDEST) { sort = MediaSort.OLDEST }
-                SortButton("По имени", sort == MediaSort.NAME) { sort = MediaSort.NAME }
+                SortButton("Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
+                SortButton("Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
+                SortButton("По имени", sort == MediaSort.NAME, palette) { sort = MediaSort.NAME }
             }
             Text(
                 when {
@@ -672,7 +672,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
 }
 
 @Composable
-private fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onClick: () -> Unit) {
     TextButton(
         onClick = onClick,
         modifier = Modifier.height(30.dp),
