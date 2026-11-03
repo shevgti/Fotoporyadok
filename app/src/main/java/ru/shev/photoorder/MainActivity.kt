@@ -178,14 +178,13 @@ class MainActivity : ComponentActivity() {
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
-                colorScheme = (if (selectedThemeId == 0) lightColorScheme else darkColorScheme)(
-                    primary = palette.primary,
-                    onPrimary = palette.onPrimary,
-                    secondary = palette.secondary,
-                    background = palette.background,
-                    surface = palette.surface,
-                    onSurface = palette.text
-                )
+                colorScheme = if (selectedThemeId == 0) {
+                    lightColorScheme(primary = palette.primary, onPrimary = palette.onPrimary, secondary = palette.secondary,
+                        background = palette.background, surface = palette.surface, onSurface = palette.text)
+                } else {
+                    darkColorScheme(primary = palette.primary, onPrimary = palette.onPrimary, secondary = palette.secondary,
+                        background = palette.background, surface = palette.surface, onSurface = palette.text)
+                }
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = palette.background) {
                     PhotoOrderScreen(
@@ -397,14 +396,14 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                 modifier = Modifier.fillMaxWidth().height(78.dp)
                                     .shadow(if (themeId == theme.id) 8.dp else 3.dp, RoundedCornerShape(11.dp))
                                     .clip(RoundedCornerShape(11.dp))
-                                    .background(Brush.linearGradient(listOf(theme.secondary, theme.primary, theme.background)))
+                                     .background(theme.surface)
                                     
                                     .clickable { onThemeChange(theme.id) }
                                     .padding(horizontal = 4.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(theme.name.substringAfter("—").trim(), color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(Brush.horizontalGradient(listOf(theme.primary, theme.secondary, theme.accent))))
+                                Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(theme.primary))
                                 if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.Black)
                             }
                         }
