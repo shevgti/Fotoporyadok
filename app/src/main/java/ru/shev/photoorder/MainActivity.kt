@@ -770,7 +770,7 @@ private fun PhotoOrderScreen(
             if (updateInfo != null) {
                 Box(
                     modifier = Modifier
-                        .width(126.dp)
+                        .width(112.dp)
                         .graphicsLayer {
                             val scale = 1f + updatePulse * 0.010f
                             scaleX = scale
