@@ -769,7 +769,7 @@ private fun PhotoOrderScreen(
                             scaleX = scale
                             scaleY = scale
                         }
-                        .shadow(5.dp + updatePulse * 5.dp, RoundedCornerShape(11.dp))
+                        .shadow((5f + updatePulse * 5f).dp, RoundedCornerShape(11.dp))
                         .clip(RoundedCornerShape(11.dp))
                         .background(
                             Brush.horizontalGradient(
@@ -1276,7 +1276,7 @@ private fun FullscreenMediaViewer(
                         // The fullscreen dialog draws edge-to-edge. Respect safe drawing
                         // insets (including the side inset in landscape) before placing
                         // the orientation control so it never sits beyond the display.
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .windowInsetsPadding(WindowInsets.systemBars)
                         .padding(end = 12.dp, bottom = 76.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xCC202020))
