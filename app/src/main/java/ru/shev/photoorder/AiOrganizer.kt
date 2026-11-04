@@ -162,7 +162,12 @@ private fun loadCachedAiResults(context: Context, media: List<MediaItem>): List<
 }
 
 @Composable
-internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier: Modifier = Modifier) {
+internal fun AiOrganizerPage(
+    media: List<MediaItem>,
+    palette: AppTheme,
+    modifier: Modifier = Modifier,
+    onExit: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
@@ -188,11 +193,19 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
         }
     }
 
-    androidx.activity.compose.BackHandler(enabled = selectedAlbum != null || selectedCategory != null) {
-        if (selectedAlbum != null) selectedAlbum = null else selectedCategory = null
+    // Own every Back gesture while this page is visible. First close the
+    // nested album/category; only a second Back returns to the main screen.
+    androidx.activity.compose.BackHandler(enabled = true) {
+        when {
+            selectedAlbum != null -> selectedAlbum = null
+            selectedCategory != null -> selectedCategory = null
+            else -> onExit()
+        }
     }
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Fill the bounded area provided by the parent. The weighted LazyColumn
+    // then scrolls only inside this area and cannot draw over following UI.
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("ИИ-фотограф", fontSize = 25.sp, color = palette.text, fontWeight = FontWeight.Bold)
         Text("Распознаёт содержимое фотографий прямо на телефоне и собирает большие события в подписанные альбомы. Снимки по одному или по два остаются вне альбомов.",
             color = palette.muted, fontSize = 12.sp)
