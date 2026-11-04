@@ -242,14 +242,16 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
-    // The AI screen owns its own nested Back stack. This handler is only
-    // responsible for the viewer and the drawer on the main screen.
+    // Nested AI navigation is handled by AiOrganizerPage. On the root
+    // screen, system Back asks for confirmation instead of closing by accident.
+    // Android's bottom-up Home gesture is not a Back event and remains untouched.
     androidx.activity.compose.BackHandler(
-        enabled = selectedViewerIndex != null || drawerState.isOpen
+        enabled = selectedViewerIndex != null || drawerState.isOpen || selectedPage == 0
     ) {
         when {
             selectedViewerIndex != null -> selectedViewerIndex = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
+            selectedPage == 0 -> showExitDialog = true
         }
     }
 
