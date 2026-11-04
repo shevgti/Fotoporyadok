@@ -486,11 +486,24 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             }
         }
     ) {
-    Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+        AsyncImage(
+            model = palette.wallpaperUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent, palette.background.copy(alpha = 0.52f))
+                )
+            )
+        )
+        Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(palette.background)
-            
+            .background(palette.background.copy(alpha = 0.64f))
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
@@ -749,6 +762,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 ) { Text(label, color = if (selectedPage == index) Color.White else palette.muted, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.SemiBold else FontWeight.Normal) }
             }
         }
+    }
     }
 
     if (showNotificationCenter) {
