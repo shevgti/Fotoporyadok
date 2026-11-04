@@ -1379,7 +1379,9 @@ private fun FullscreenMediaViewer(
 
     Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        // Let Android recalculate the dialog's safe content bounds after an
+        // orientation change. Edge-to-edge dialog bounds could remain offset in landscape.
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = true)
     ) {
         Box(
             modifier = Modifier.fillMaxSize().background(Color.Black)
@@ -1397,7 +1399,6 @@ private fun FullscreenMediaViewer(
                     )
                 }
         ) {
-            var playerControlsVisible by remember(item.uri) { mutableStateOf(false) }
             if (item.isVideo) {
                 val player = remember(item.uri) {
                     ExoPlayer.Builder(context).build().apply {
@@ -1414,11 +1415,6 @@ private fun FullscreenMediaViewer(
                         PlayerView(viewContext).apply {
                             this.player = player
                             useController = true
-                            setControllerVisibilityListener(
-                                PlayerView.ControllerVisibilityListener { visibility: Int ->
-                                    playerControlsVisible = visibility == View.VISIBLE
-                                }
-                            )
                         }
                     },
                     update = { it.player = player },
@@ -1443,7 +1439,10 @@ private fun FullscreenMediaViewer(
                 Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
                 Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
             }
-            if (item.isVideo && playerControlsVisible) {
+            if (item.isVideo) {
+                // Keep the orientation switch available even after ExoPlayer's
+                // transport controls auto-hide. The dialog now uses Android's safe
+                // content area, so this inset remains visible in portrait and landscape.
                 IconButton(
                     onClick = {
                         isLandscape = !isLandscape
@@ -1454,11 +1453,7 @@ private fun FullscreenMediaViewer(
                         }
                     },
                     modifier = Modifier.align(Alignment.BottomEnd)
-                        // The fullscreen dialog draws edge-to-edge. Respect safe drawing
-                        // insets (including the side inset in landscape) before placing
-                        // the orientation control so it never sits beyond the display.
-                        .navigationBarsPadding()
-                        .padding(end = 12.dp, bottom = 76.dp)
+                        .padding(end = 16.dp, bottom = 76.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xCC202020))
                 ) {
