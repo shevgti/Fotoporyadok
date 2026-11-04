@@ -99,16 +99,20 @@ private fun eventTitleFor(group: List<AiPhotoResult>): String {
     val share = dominant.value.toFloat() / group.size.coerceAtLeast(1)
     if (share < 0.50f) return "Событие · смешанная серия"
 
-    val labelsByPhoto = group.flatMap { photo ->
-        photo.labels.map { it.lowercase(Locale.ROOT) }.distinct()
-    }.groupingBy { it }.eachCount()
-    val hasSea = labelsByPhoto.keys.any { it in setOf("beach", "sea", "ocean", "coast", "seaside") }
-    val hasPeople = labelsByPhoto.keys.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "family", "friend", "group") }
-    val hasFood = labelsByPhoto.keys.any { it in setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "picnic") }
+    // A label contributes once per photo. Require a meaningful share of the
+    // album before using a specific scene in its title; one stray prediction
+    // must not rename an otherwise unrelated group.
+    fun photoShare(aliases: Set<String>): Float =
+        group.count { photo -> photo.labels.any { it.lowercase(Locale.ROOT) in aliases } }
+            .toFloat() / group.size.coerceAtLeast(1)
+
+    val seaShare = photoShare(setOf("beach", "sea", "ocean", "coast", "seaside"))
+    val peopleShare = photoShare(setOf("person", "people", "human", "face", "portrait", "selfie", "family", "friend", "group"))
+    val foodShare = photoShare(setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "picnic"))
 
     return when (dominant.key) {
-        "Люди" -> if (hasFood) "Семейный праздник" else "Встреча с близкими"
-        "Природа" -> if (hasSea) "Отдых на море" else "Прогулка на природе"
+        "Люди" -> if (peopleShare >= 0.50f && foodShare >= 0.35f) "Семейный праздник" else "Встреча с близкими"
+        "Природа" -> if (seaShare >= 0.40f) "Отдых на море" else "Прогулка на природе"
         "Город и архитектура" -> "Городская прогулка"
         "Путешествия" -> "Путешествие"
         "Еда" -> "Угощение и застолье"
@@ -137,13 +141,27 @@ internal fun buildAiEventAlbums(results: List<AiPhotoResult>): List<AiEventAlbum
             val sameDay = dayFormat.format(Date(previous.media.dateSeconds * 1000)) ==
                 dayFormat.format(Date(photo.media.dateSeconds * 1000))
             val gapSeconds = (photo.media.dateSeconds - previous.media.dateSeconds).coerceAtLeast(0L)
-            val currentContext = current.flatMap { it.labels }
+            // Time proximity alone is not enough: two unrelated subjects
+            // photographed on the same day must not become one album.
+            // Compare the new photo with the recent scene, not the entire day's
+            // accumulated labels, so an old incidental label cannot bridge groups.
+            val recentContext = current.takeLast(3).flatMap { it.labels }
                 .map { it.lowercase(Locale.ROOT) }.toSet().intersect(eventContextLabels)
             val photoContext = photo.labels.map { it.lowercase(Locale.ROOT) }.toSet()
                 .intersect(eventContextLabels)
-            val sharedSceneContext = currentContext.intersect(photoContext).isNotEmpty()
-            val belongsToSameSession = gapSeconds <= 4 * 60 * 60L ||
-                (gapSeconds <= 8 * 60 * 60L && sharedSceneContext)
+            val sharedContext = recentContext.intersect(photoContext)
+            val strongSceneAnchors = setOf(
+                "beach", "sea", "ocean", "coast", "seaside", "camping", "picnic",
+                "barbecue", "grill", "wedding", "birthday", "celebration", "party",
+                "cake", "tent", "concert", "museum"
+            )
+            val hasStrongSceneAnchor = sharedContext.any { it in strongSceneAnchors }
+            val hasMultipleSharedClues = sharedContext.size >= 2
+            val sameReliableCategory = photo.category == previous.category &&
+                photo.category !in setOf("Разное", "Не распознано") && gapSeconds <= 90 * 60L
+            val semanticMatch = hasStrongSceneAnchor || hasMultipleSharedClues || sameReliableCategory
+            val belongsToSameSession = (gapSeconds <= 4 * 60 * 60L && semanticMatch) ||
+                (gapSeconds <= 8 * 60 * 60L && hasStrongSceneAnchor)
 
             if (sameDay && belongsToSameSession) current.add(photo)
             else groups.add(mutableListOf(photo))
@@ -237,6 +255,8 @@ internal fun AiOrganizerPage(
     // nested album/category; only a second Back returns to the main screen.
     androidx.activity.compose.BackHandler(enabled = true) {
         when {
+            // Close the enlarged preview first, then return from the album.
+            previewPhoto != null -> previewPhoto = null
             selectedAlbum != null -> selectedAlbum = null
             selectedCategory != null -> selectedCategory = null
             else -> onExit()
