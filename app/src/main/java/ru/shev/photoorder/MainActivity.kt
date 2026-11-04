@@ -180,6 +180,7 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        UpdateCheckWorker.schedule(this)
         // Create the channel at app startup so Android/HyperOS can expose
         // the app's notification controls even before the first notification.
         createAppNotificationChannel(this)
@@ -546,20 +547,37 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         }
                     },
                     enabled = !checkingUpdate && !downloadingUpdate,
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 5.dp)
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Box(modifier = Modifier.width(132.dp).height(36.dp).clip(RoundedCornerShape(18.dp)).background(if (hasNewVersion) Color(0xFF34C759) else palette.surface), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.width(150.dp).height(48.dp)
+                            .shadow(if (hasNewVersion) 7.dp else 4.dp, RoundedCornerShape(13.dp))
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    if (hasNewVersion) listOf(Color(0xFF55D982), Color(0xFF159B50))
+                                    else listOf(palette.surface, palette.card)
+                                )
+                            )
+                            .border(1.dp, if (hasNewVersion) Color.White.copy(alpha = 0.55f) else palette.accent.copy(alpha = 0.22f), RoundedCornerShape(13.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Обновление", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (hasNewVersion) Color.White else palette.text)
+                            Text("v${BuildConfig.VERSION_NAME}", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = if (hasNewVersion) Color.White.copy(alpha = 0.9f) else palette.accent)
+                        }
                         Text(
                             when {
-                                checkingUpdate -> "Проверка…"
-                                hasNewVersion -> "Доступно ${updateInfo?.versionName}"
-                                else -> "Обновление ${BuildConfig.VERSION_NAME}"
+                                checkingUpdate -> "Проверяем новую версию…"
+                                hasNewVersion -> "Доступна новая версия ${updateInfo?.versionName}"
+                                else -> "Установлена последняя версия"
                             },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                            fontSize = 10.sp, maxLines = 1, softWrap = false,
-                            overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                            fontSize = 9.sp, maxLines = 1, softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
                             fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
-                            color = if (hasNewVersion) Color.White else palette.accent
+                            color = if (hasNewVersion) Color.White else palette.muted
                         )
                     }
                 }
