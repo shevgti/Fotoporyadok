@@ -791,7 +791,7 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
             title = { Text("Доступна версия ${update.versionName}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text((update.notes.substringBefore("\\n\\n").ifBlank { "Доступна новая версия приложения." }) + "\\n\\nФайл: app-release.apk\\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName)
+                    Text((update.notes.substringBefore("\n\n").ifBlank { "Доступна новая версия приложения." }) + "\n\nФайл: app-release.apk\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName)
                     if (downloadingUpdate) {
                         if (updateTotalBytes > 0L) {
                             val percent = ((updateDownloadedBytes * 100L) / updateTotalBytes).toInt().coerceIn(0, 100)
