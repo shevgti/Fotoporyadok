@@ -389,6 +389,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable { showThemePicker = !showThemePicker }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
