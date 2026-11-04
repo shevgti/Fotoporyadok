@@ -242,6 +242,16 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
+    androidx.activity.compose.BackHandler(
+        enabled = selectedPage != 0 || selectedViewerIndex != null || drawerState.isOpen
+    ) {
+        when {
+            selectedViewerIndex != null -> selectedViewerIndex = null
+            drawerState.isOpen -> scope.launch { drawerState.close() }
+            selectedPage != 0 -> selectedPage = 0
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             checkingUpdate = true
@@ -460,11 +470,11 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                         updateMessage = "Не удалось проверить обновление: " + (error.message ?: "ошибка сети")
                                     } finally { checkingUpdate = false }
                                 }
-                            }.padding(horizontal = 12.dp, vertical = 11.dp),
+                            }.padding(horizontal = 12.dp, vertical = if (updateInfo != null) 14.dp else 11.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            if (updateInfo != null) "↻  Доступно обновление " + updateInfo!!.versionName else "↻  Обновление " + BuildConfig.VERSION_NAME,
+                            if (updateInfo != null) "●  Доступно новое обновление · " + updateInfo!!.versionName else "↻  Обновление " + BuildConfig.VERSION_NAME,
                             color = if (updateInfo != null) Color.White else palette.onPrimary,
                             fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1
                         )
@@ -532,17 +542,28 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 }
             }
             if (updateInfo != null) {
-                TextButton(
-                    onClick = { showUpdateDialog = true },
-                    enabled = !downloadingUpdate,
-                    contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
+                Box(
+                    modifier = Modifier.shadow(5.dp, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF39D477), Color(0xFF159B50))))
+                        .clickable(enabled = !downloadingUpdate) { showUpdateDialog = true }
+                        .padding(horizontal = 9.dp, vertical = 6.dp)
                 ) {
-                    Text(
-                        "● ${updateInfo?.versionName}",
-                        color = Color(0xFF159B50),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text(
+                            "● Доступно новое обновление",
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1
+                        )
+                        Text(
+                            "Версия ${updateInfo?.versionName}",
+                            color = Color.White.copy(alpha = 0.94f),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
