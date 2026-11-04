@@ -340,7 +340,11 @@ internal fun AiOrganizerPage(
                                 Card(
                                     modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
                                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                                    shape = RoundedCornerShape(12.dp)
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        0.8.dp,
+                                        palette.muted.copy(alpha = 0.55f)
+                                    )
                                 ) {
                                     Column(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
