@@ -53,7 +53,7 @@ class AiAlbumBackNavigationTest {
         assertFixtureVisibleToApp()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitForText("ФотоПорядок")
-        waitForTextContains("Показано:")
+        // The label exists before the asynchronous MediaStore refresh finishes.\n        // Do not enter the AI screen until all three fixture images are in the UI state.\n        waitForTextContains("Показано: 3")
     }
 
     @After
