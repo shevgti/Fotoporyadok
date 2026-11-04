@@ -1196,9 +1196,11 @@ private fun FullscreenMediaViewer(
                         PlayerView(viewContext).apply {
                             this.player = player
                             useController = true
-                            setControllerVisibilityListener { visibility ->
-                                playerControlsVisible = visibility == View.VISIBLE
-                            }
+                            setControllerVisibilityListener(
+                                PlayerView.ControllerVisibilityListener { visibility: Int ->
+                                    playerControlsVisible = visibility == View.VISIBLE
+                                }
+                            )
                         }
                     },
                     update = { it.player = player },
