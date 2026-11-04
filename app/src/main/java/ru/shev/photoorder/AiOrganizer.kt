@@ -231,7 +231,7 @@ internal fun AiOrganizerPage(
     palette: AppTheme,
     modifier: Modifier = Modifier,
     onExit: () -> Unit,
-    onOpenMedia: (MediaItem) -> Unit
+    onOpenMedia: (List<MediaItem>, MediaItem) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -375,7 +375,7 @@ internal fun AiOrganizerPage(
                 }
                 items(media.filter { it.isVideo }, key = { it.uri.toString() }) { video ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(video) },
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(media.filter { it.isVideo }, video) },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(14.dp)
                     ) {
@@ -416,7 +416,7 @@ internal fun AiOrganizerPage(
                     Card(
                         modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
                             detectTapGestures(
-                                onTap = { onOpenMedia(photo.media) },
+                                onTap = { onOpenMedia(categoryPhotos.map { it.media }, photo.media) },
                                 onLongPress = { 
                                     zoomedPhoto = photo
                                     previewHeld = true
@@ -471,7 +471,7 @@ internal fun AiOrganizerPage(
                     Card(
                         modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
                             detectTapGestures(
-                                onTap = { onOpenMedia(photo.media) },
+                                onTap = { onOpenMedia(album.photos.map { it.media }, photo.media) },
                                 onLongPress = { 
                                     zoomedPhoto = photo
                                     previewHeld = true
@@ -507,7 +507,7 @@ internal fun AiOrganizerPage(
                     item { Text("Видео · ${media.count { it.isVideo }}", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
                     items(media.filter { it.isVideo }, key = { it.uri.toString() }) { video ->
                         Card(
-                            modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(video) },
+                            modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(media.filter { it.isVideo }, video) },
                             colors = CardDefaults.cardColors(containerColor = palette.card),
                             shape = RoundedCornerShape(14.dp)
                         ) {
