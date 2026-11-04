@@ -230,6 +230,7 @@ class MainActivity : ComponentActivity() {
     private var notificationUpdateInfo by mutableStateOf<UpdateInfo?>(null)
 
     private fun readNotificationUpdate(intent: Intent?): UpdateInfo? {
+        if (!getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("auto_update_enabled", false)) return null
         if (intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) != true) return null
         val versionCode = intent.getIntExtra(EXTRA_UPDATE_VERSION_CODE, 0)
         val versionName = intent.getStringExtra(EXTRA_UPDATE_VERSION_NAME).orEmpty()
@@ -244,7 +245,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         notificationUpdateInfo = readNotificationUpdate(intent)
-        openUpdateDialogRequest = intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false
+        val automaticUpdatesEnabled = getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+            .getBoolean("auto_update_enabled", false)
+        openUpdateDialogRequest = automaticUpdatesEnabled &&
+            (intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false)
         UpdateCheckWorker.schedule(this)
         // Create the channel at app startup so Android/HyperOS can expose
         // the app's notification controls even before the first notification.
@@ -287,9 +291,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
+        val automaticUpdatesEnabled = getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+            .getBoolean("auto_update_enabled", false)
+        if (automaticUpdatesEnabled && intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
             notificationUpdateInfo = readNotificationUpdate(intent)
-            openUpdateDialogRequest = true
+            openUpdateDialogRequest = notificationUpdateInfo != null
         }
     }
 }
@@ -395,10 +401,9 @@ private fun PhotoOrderScreen(
                 checkingUpdate = true
                 try {
                     val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
-                    if (latest != null && latest.versionCode != updateInfo?.versionCode) {
+                    if (latest != null) {
+                        // Keep the update available in the header until it is actually installed.
                         updateInfo = latest
-                        postAppNotification(context, "Доступно обновление ФотоПорядка",
-                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.", 1002, latest)
                         if (autoUpdateEnabled && autoUpdateAttemptedVersion != latest.versionCode) {
                             autoUpdateAttemptedVersion = latest.versionCode
                             downloadingUpdate = true
@@ -412,9 +417,10 @@ private fun PhotoOrderScreen(
                             } catch (error: Exception) {
                                 updateMessage = "Автоматическая загрузка не удалась: ${error.message ?: error.javaClass.simpleName}. Можно повторить вручную."
                             } finally { downloadingUpdate = false }
-                        } else if (!autoUpdateEnabled) showUpdateDialog = true
-                    } else if (latest == null) {
-                        updateInfo = null
+                        } else if (!autoUpdateEnabled) {
+                            // Manual mode is silent: only the persistent header button announces the update.
+                            showUpdateDialog = false
+                        }
                     }
                 } catch (_: Exception) {
                     // Ошибка сети не должна мешать работе с медиатекой.
@@ -578,6 +584,7 @@ private fun PhotoOrderScreen(
                                 .clickable {
                                     autoUpdateEnabled = enabled
                                     context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).edit().putBoolean("auto_update_enabled", enabled).apply()
+                                    UpdateCheckWorker.schedule(context)
                                 }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(if (autoUpdateEnabled == enabled) "◉" else "○", color = palette.accent, fontSize = 17.sp)
                                 Text(label, color = palette.text, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
@@ -763,8 +770,9 @@ private fun PhotoOrderScreen(
             if (updateInfo != null) {
                 Box(
                     modifier = Modifier
+                        .width(126.dp)
                         .graphicsLayer {
-                            val scale = 1f + updatePulse * 0.018f
+                            val scale = 1f + updatePulse * 0.010f
                             scaleX = scale
                             scaleY = scale
                         }
@@ -791,7 +799,7 @@ private fun PhotoOrderScreen(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
-                            "● Доступно новое обновление",
+                            "● Обновление",
                             color = Color.White,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -1140,7 +1148,7 @@ private fun PhotoOrderScreen(
                     }
                 }) { Text(if (downloadingUpdate) "Скачиваем…" else "Скачать и установить") }
             },
-            dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
+            dismissButton = { TextButton(onClick = { showUpdateDialog = false }, enabled = !downloadingUpdate) { Text("Позже") } },
             title = { Text("Доступна версия ${update.versionName}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
