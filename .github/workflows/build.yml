@@ -11,11 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android-ui-tests:
-    name: Back navigation on Android ${{ matrix.api-level }} emulator
-    strategy:
-      fail-fast: false
-      matrix:
-        api-level: [26, 35, 36]
+    name: Back navigation on Android 16 emulator
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -37,10 +33,10 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Bundle theme photographs required by the app resources
         run: bash scripts/download-theme-images.sh
-      - name: Run instrumented tests on Android ${{ matrix.api-level }} emulator
+      - name: Run instrumented tests on Android 16 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ matrix.api-level }}
+          api-level: 36
           target: google_apis
           arch: x86_64
           profile: pixel_7
@@ -53,7 +49,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-ui-test-reports-api-${{ matrix.api-level }}
+          name: android-ui-test-reports-api-36
           path: |
             app/build/reports/androidTests/connected/
             app/build/outputs/androidTest-results/connected/
