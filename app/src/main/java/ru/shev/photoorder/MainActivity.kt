@@ -190,6 +190,24 @@ internal const val EXTRA_UPDATE_VERSION_NAME = "ru.shev.photoorder.extra.UPDATE_
 internal const val EXTRA_UPDATE_DOWNLOAD_URL = "ru.shev.photoorder.extra.UPDATE_DOWNLOAD_URL"
 internal const val EXTRA_UPDATE_NOTES = "ru.shev.photoorder.extra.UPDATE_NOTES"
 
+internal fun saveNotificationUpdate(context: Context, update: UpdateInfo) {
+    context.getSharedPreferences("photoorder_update_cache", Context.MODE_PRIVATE).edit()
+        .putInt(EXTRA_UPDATE_VERSION_CODE, update.versionCode)
+        .putString(EXTRA_UPDATE_VERSION_NAME, update.versionName)
+        .putString(EXTRA_UPDATE_DOWNLOAD_URL, update.downloadUrl)
+        .putString(EXTRA_UPDATE_NOTES, update.notes)
+        .apply()
+}
+
+private fun readCachedNotificationUpdate(context: Context): UpdateInfo? {
+    val prefs = context.getSharedPreferences("photoorder_update_cache", Context.MODE_PRIVATE)
+    val versionCode = prefs.getInt(EXTRA_UPDATE_VERSION_CODE, 0)
+    val versionName = prefs.getString(EXTRA_UPDATE_VERSION_NAME, null).orEmpty()
+    val downloadUrl = prefs.getString(EXTRA_UPDATE_DOWNLOAD_URL, null).orEmpty()
+    if (versionCode <= BuildConfig.VERSION_CODE || versionName.isBlank() || downloadUrl.isBlank()) return null
+    return UpdateInfo(versionCode, versionName, downloadUrl, prefs.getString(EXTRA_UPDATE_NOTES, "").orEmpty())
+}
+
 class MainActivity : ComponentActivity() {
     private var openUpdateDialogRequest by mutableStateOf(false)
     private var notificationUpdateInfo by mutableStateOf<UpdateInfo?>(null)
@@ -199,9 +217,11 @@ class MainActivity : ComponentActivity() {
         val versionCode = intent.getIntExtra(EXTRA_UPDATE_VERSION_CODE, 0)
         val versionName = intent.getStringExtra(EXTRA_UPDATE_VERSION_NAME).orEmpty()
         val downloadUrl = intent.getStringExtra(EXTRA_UPDATE_DOWNLOAD_URL).orEmpty()
-        if (versionCode <= BuildConfig.VERSION_CODE || versionName.isBlank() || downloadUrl.isBlank()) return null
-        return UpdateInfo(versionCode, versionName, downloadUrl,
-            intent.getStringExtra(EXTRA_UPDATE_NOTES).orEmpty())
+        if (versionCode > BuildConfig.VERSION_CODE && versionName.isNotBlank() && downloadUrl.isNotBlank()) {
+            return UpdateInfo(versionCode, versionName, downloadUrl,
+                intent.getStringExtra(EXTRA_UPDATE_NOTES).orEmpty())
+        }
+        return readCachedNotificationUpdate(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -285,8 +305,11 @@ private fun PhotoOrderScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
-    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-    var showUpdateDialog by remember { mutableStateOf(false) }
+    // Seed dialog state directly from notification data before any effect or network work.
+    var updateInfo by remember(notificationUpdateInfo) { mutableStateOf(notificationUpdateInfo) }
+    var showUpdateDialog by remember(openUpdateDialogRequest, notificationUpdateInfo) {
+        mutableStateOf(openUpdateDialogRequest && notificationUpdateInfo != null)
+    }
     var updateMessage by remember { mutableStateOf<String?>(null) }
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
@@ -313,29 +336,16 @@ private fun PhotoOrderScreen(
 
     LaunchedEffect(openUpdateDialogRequest, notificationUpdateInfo) {
         if (openUpdateDialogRequest) {
-            // Render the dialog immediately from the notification payload;
-            // network validation runs afterwards and must not delay the button.
-            notificationUpdateInfo?.let {
-                updateInfo = it
+            // Do not block the dialog on a network round-trip. The release payload is
+            // supplied by the notification and also persisted as a local fallback.
+            val update = notificationUpdateInfo
+            if (update != null) {
+                updateInfo = update
                 showUpdateDialog = true
+            } else if (updateInfo == null) {
+                updateMessage = "Не удалось прочитать данные обновления из уведомления. Открой приложение и проверь обновления вручную."
             }
-            checkingUpdate = true
-            try {
-                val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
-                if (latest != null) {
-                    updateInfo = latest
-                    showUpdateDialog = true
-                } else if (notificationUpdateInfo == null && updateInfo == null) {
-                    updateMessage = "Сейчас нет доступного обновления. Возможно, оно уже установлено."
-                }
-            } catch (error: Exception) {
-                if (notificationUpdateInfo == null && updateInfo == null) {
-                    updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
-                }
-            } finally {
-                checkingUpdate = false
-                onUpdateDialogRequestHandled()
-            }
+            onUpdateDialogRequestHandled()
         }
     }
 
