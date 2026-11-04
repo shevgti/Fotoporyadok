@@ -848,9 +848,13 @@ private fun PhotoOrderScreen(
                     )
                 }
             } else {
-                LazyVerticalGrid(
+                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    // Use the same adaptive-grid calculation as LazyVerticalGrid so captions
+                    // disappear as soon as the layout reaches three or more columns.
+                    val gridColumnCount = ((maxWidth + 10.dp) / (gridCellMinWidth.dp + 10.dp)).toInt().coerceAtLeast(1)
+                    LazyVerticalGrid(
                     columns = GridCells.Adaptive(gridCellMinWidth.dp),
-                    modifier = Modifier.weight(1f).pointerInput(Unit) {
+                    modifier = Modifier.fillMaxSize().pointerInput(Unit) {
                         // Observe pinch gestures in the Initial pass so child photo
                         // tap handlers cannot steal the second pointer.
                         awaitEachGesture {
@@ -928,51 +932,54 @@ private fun PhotoOrderScreen(
                                         contentScale = ContentScale.Crop
                                     )
                                 }
-                                BoxWithConstraints(
-                                    modifier = Modifier.fillMaxWidth().background(Color.White)
-                                ) {
-                                    // The caption strip and typography shrink with the tile width.
-                                    val captionHeight = when {
-                                        maxWidth < 85.dp -> 18.dp
-                                        maxWidth < 120.dp -> 21.dp
-                                        else -> 25.dp
-                                    }
-                                    val nameSize = when {
-                                        maxWidth < 85.dp -> 7.sp
-                                        maxWidth < 120.dp -> 8.sp
-                                        else -> 9.sp
-                                    }
-                                    val dateSize = when {
-                                        maxWidth < 85.dp -> 6.sp
-                                        maxWidth < 120.dp -> 7.sp
-                                        else -> 8.sp
-                                    }
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth()
-                                            .height(captionHeight)
-                                            .padding(horizontal = 3.dp, vertical = 1.dp),
-                                        verticalArrangement = Arrangement.Center
+                                if (gridColumnCount <= 2) {
+                                    BoxWithConstraints(
+                                        modifier = Modifier.fillMaxWidth().background(palette.background)
                                     ) {
-                                        Text(
-                                            item.name,
-                                            maxLines = 1,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF202020),
-                                            fontSize = nameSize,
-                                            lineHeight = nameSize,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            formatDate(item.dateSeconds),
-                                            color = Color(0xFF666666),
-                                            fontSize = dateSize,
-                                            lineHeight = dateSize,
-                                            maxLines = 1
-                                        )
+                                        // Keep the compact caption only in one- and two-column layouts.
+                                        val captionHeight = when {
+                                            maxWidth < 85.dp -> 18.dp
+                                            maxWidth < 120.dp -> 21.dp
+                                            else -> 25.dp
+                                        }
+                                        val nameSize = when {
+                                            maxWidth < 85.dp -> 7.sp
+                                            maxWidth < 120.dp -> 8.sp
+                                            else -> 9.sp
+                                        }
+                                        val dateSize = when {
+                                            maxWidth < 85.dp -> 6.sp
+                                            maxWidth < 120.dp -> 7.sp
+                                            else -> 8.sp
+                                        }
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth()
+                                                .height(captionHeight)
+                                                .padding(horizontal = 3.dp, vertical = 1.dp),
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                item.name,
+                                                maxLines = 1,
+                                                fontWeight = FontWeight.Medium,
+                                                color = palette.text,
+                                                fontSize = nameSize,
+                                                lineHeight = nameSize,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                formatDate(item.dateSeconds),
+                                                color = palette.muted,
+                                                fontSize = dateSize,
+                                                lineHeight = dateSize,
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
