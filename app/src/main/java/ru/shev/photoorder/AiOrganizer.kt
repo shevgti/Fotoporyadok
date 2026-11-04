@@ -327,28 +327,56 @@ internal fun AiOrganizerPage(
             Text("Умные альбомы · ${albums.size}", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             if (albums.isEmpty()) Text("Пока не найдено достаточно крупных событий. Для отдельного альбома нужно минимум три фотографии в одной съёмочной серии.", color = palette.muted, fontSize = 12.sp)
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(albums, key = { it.id }) { album ->
-                    Card(modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
-                        colors = CardDefaults.cardColors(containerColor = palette.card), shape = RoundedCornerShape(18.dp)) {
-                        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
-                                modifier = Modifier.fillMaxWidth().height(156.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                userScrollEnabled = false
-                            ) {
-                                items(album.photos.take(8), key = { it.media.uri.toString() }) { photo ->
-                                    AsyncImage(
-                                        model = photo.media.uri,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                                        contentScale = ContentScale.Crop
-                                    )
+                if (albums.isNotEmpty()) {
+                    item {
+                        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxWidth().height((((albums.size + 1) / 2) * 184).dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
+                            userScrollEnabled = false
+                        ) {
+                            items(albums, key = { it.id }) { album ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
+                                    colors = CardDefaults.cardColors(containerColor = palette.card),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                                            modifier = Modifier.fillMaxWidth().height(104.dp),
+                                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                            userScrollEnabled = false
+                                        ) {
+                                            items(album.photos.take(4), key = { it.media.uri.toString() }) { photo ->
+                                                AsyncImage(
+                                                    model = photo.media.uri,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            album.title,
+                                            color = palette.text,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            "${album.photos.size} фото · ${album.dateLabel}",
+                                            color = palette.muted,
+                                            fontSize = 10.sp,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
-                            Text(album.title, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("${album.photos.size} фотографий · ${album.dateLabel}", color = palette.muted, fontSize = 11.sp)
                         }
                     }
                 }
