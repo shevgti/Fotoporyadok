@@ -184,13 +184,29 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
 }
 
 
-private const val EXTRA_OPEN_UPDATE_DIALOG = "ru.shev.photoorder.extra.OPEN_UPDATE_DIALOG"
+internal const val EXTRA_OPEN_UPDATE_DIALOG = "ru.shev.photoorder.extra.OPEN_UPDATE_DIALOG"
+internal const val EXTRA_UPDATE_VERSION_CODE = "ru.shev.photoorder.extra.UPDATE_VERSION_CODE"
+internal const val EXTRA_UPDATE_VERSION_NAME = "ru.shev.photoorder.extra.UPDATE_VERSION_NAME"
+internal const val EXTRA_UPDATE_DOWNLOAD_URL = "ru.shev.photoorder.extra.UPDATE_DOWNLOAD_URL"
+internal const val EXTRA_UPDATE_NOTES = "ru.shev.photoorder.extra.UPDATE_NOTES"
 
 class MainActivity : ComponentActivity() {
     private var openUpdateDialogRequest by mutableStateOf(false)
+    private var notificationUpdateInfo by mutableStateOf<UpdateInfo?>(null)
+
+    private fun readNotificationUpdate(intent: Intent?): UpdateInfo? {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) != true) return null
+        val versionCode = intent.getIntExtra(EXTRA_UPDATE_VERSION_CODE, 0)
+        val versionName = intent.getStringExtra(EXTRA_UPDATE_VERSION_NAME).orEmpty()
+        val downloadUrl = intent.getStringExtra(EXTRA_UPDATE_DOWNLOAD_URL).orEmpty()
+        if (versionCode <= 0 || versionName.isBlank() || downloadUrl.isBlank()) return null
+        return UpdateInfo(versionCode, versionName, downloadUrl,
+            intent.getStringExtra(EXTRA_UPDATE_NOTES).orEmpty())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        notificationUpdateInfo = readNotificationUpdate(intent)
         openUpdateDialogRequest = intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false
         UpdateCheckWorker.schedule(this)
         // Create the channel at app startup so Android/HyperOS can expose
@@ -215,7 +231,11 @@ class MainActivity : ComponentActivity() {
                         lifecycle = lifecycle,
                         themeId = selectedThemeId,
                         openUpdateDialogRequest = openUpdateDialogRequest,
-                        onUpdateDialogRequestHandled = { openUpdateDialogRequest = false },
+                        notificationUpdateInfo = notificationUpdateInfo,
+                        onUpdateDialogRequestHandled = {
+                            openUpdateDialogRequest = false
+                            notificationUpdateInfo = null
+                        },
                         onThemeChange = { id ->
                             selectedThemeId = id
                             getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
@@ -231,6 +251,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
+            notificationUpdateInfo = readNotificationUpdate(intent)
             openUpdateDialogRequest = true
         }
     }
@@ -241,6 +262,7 @@ private fun PhotoOrderScreen(
     lifecycle: Lifecycle,
     themeId: Int,
     openUpdateDialogRequest: Boolean,
+    notificationUpdateInfo: UpdateInfo?,
     onUpdateDialogRequestHandled: () -> Unit,
     onThemeChange: (Int) -> Unit
 ) {
@@ -289,20 +311,27 @@ private fun PhotoOrderScreen(
         }
     }
 
-    LaunchedEffect(openUpdateDialogRequest) {
+    LaunchedEffect(openUpdateDialogRequest, notificationUpdateInfo) {
         if (openUpdateDialogRequest) {
+            // Render the dialog immediately from the notification payload;
+            // network validation runs afterwards and must not delay the button.
+            notificationUpdateInfo?.let {
+                updateInfo = it
+                showUpdateDialog = true
+            }
             checkingUpdate = true
             try {
-                // A notification tap explicitly requests the update dialog.
-                val latest = AppUpdater.check(BuildConfig.VERSION_CODE) ?: updateInfo
+                val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
                 if (latest != null) {
                     updateInfo = latest
                     showUpdateDialog = true
-                } else {
+                } else if (notificationUpdateInfo == null && updateInfo == null) {
                     updateMessage = "Сейчас нет доступного обновления. Возможно, оно уже установлено."
                 }
             } catch (error: Exception) {
-                updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
+                if (notificationUpdateInfo == null && updateInfo == null) {
+                    updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
+                }
             } finally {
                 checkingUpdate = false
                 onUpdateDialogRequestHandled()
@@ -1174,12 +1203,18 @@ private fun createAppNotificationChannel(context: Context) {
     }
 }
 
-private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int) {
+private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int, update: UpdateInfo? = null) {
     if (!appNotificationsEnabled(context)) return
     createAppNotificationChannel(context)
     val launchIntent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         putExtra(EXTRA_OPEN_UPDATE_DIALOG, true)
+        update?.let {
+            putExtra(EXTRA_UPDATE_VERSION_CODE, it.versionCode)
+            putExtra(EXTRA_UPDATE_VERSION_NAME, it.versionName)
+            putExtra(EXTRA_UPDATE_DOWNLOAD_URL, it.downloadUrl)
+            putExtra(EXTRA_UPDATE_NOTES, it.notes)
+        }
     }
     val pendingIntent = PendingIntent.getActivity(
         context, notificationId, launchIntent,
