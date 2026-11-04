@@ -230,7 +230,8 @@ internal fun AiOrganizerPage(
     media: List<MediaItem>,
     palette: AppTheme,
     modifier: Modifier = Modifier,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    onOpenMedia: (MediaItem) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -369,6 +370,24 @@ internal fun AiOrganizerPage(
                         }
                     }
                 }
+                item {
+                    Text("Видео · ${media.count { it.isVideo }}", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                }
+                items(media.filter { it.isVideo }, key = { it.uri.toString() }) { video ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(video) },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("▶", color = palette.primary, fontWeight = FontWeight.Bold)
+                            Column(Modifier.weight(1f)) {
+                                Text(video.name, color = palette.text, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text("Открыть видео", color = palette.muted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
             }
         } else if (selectedCategory != null) {
             // Capture the selected value for this composition. Lazy grid item
@@ -397,6 +416,7 @@ internal fun AiOrganizerPage(
                     Card(
                         modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
                             detectTapGestures(
+                                onTap = { onOpenMedia(photo.media) },
                                 onLongPress = { 
                                     zoomedPhoto = photo
                                     previewHeld = true
@@ -451,6 +471,7 @@ internal fun AiOrganizerPage(
                     Card(
                         modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
                             detectTapGestures(
+                                onTap = { onOpenMedia(photo.media) },
                                 onLongPress = { 
                                     zoomedPhoto = photo
                                     previewHeld = true
@@ -481,6 +502,26 @@ internal fun AiOrganizerPage(
             }
         } else if (results.isEmpty() && !analyzing) {
             Text("После анализа здесь появятся альбомы, названные по содержимому фотографий.", color = palette.muted, fontSize = 12.sp)
+            if (media.any { it.isVideo }) {
+                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { Text("Видео · ${media.count { it.isVideo }}", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp) }
+                    items(media.filter { it.isVideo }, key = { it.uri.toString() }) { video ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { onOpenMedia(video) },
+                            colors = CardDefaults.cardColors(containerColor = palette.card),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("▶", color = palette.primary, fontWeight = FontWeight.Bold)
+                                Column(Modifier.weight(1f)) {
+                                    Text(video.name, color = palette.text, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                    Text("Открыть видео", color = palette.muted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
