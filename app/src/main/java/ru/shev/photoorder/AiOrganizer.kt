@@ -348,13 +348,13 @@ internal fun AiOrganizerPage(
                                 ) {
                                     Column(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                                            modifier = Modifier.fillMaxWidth().height(104.dp),
+                                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(3),
+                                            modifier = Modifier.fillMaxWidth().height(70.dp),
                                             verticalArrangement = Arrangement.spacedBy(3.dp),
                                             horizontalArrangement = Arrangement.spacedBy(3.dp),
                                             userScrollEnabled = false
                                         ) {
-                                            items(album.photos.take(4), key = { it.media.uri.toString() }) { photo ->
+                                            items(album.photos.take(3), key = { it.media.uri.toString() }) { photo ->
                                                 AsyncImage(
                                                     model = photo.media.uri,
                                                     contentDescription = null,

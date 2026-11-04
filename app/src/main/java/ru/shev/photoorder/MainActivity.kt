@@ -366,7 +366,7 @@ private fun PhotoOrderScreen(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900),
+            animation = tween(durationMillis = 700),
             repeatMode = RepeatMode.Reverse
         ),
         label = "updateButtonPulseValue"
@@ -807,24 +807,29 @@ private fun PhotoOrderScreen(
                     modifier = Modifier
                         .width(112.dp)
                         .graphicsLayer {
-                            val scale = 1f + updatePulse * 0.010f
+                            val scale = 1f + updatePulse * 0.035f
                             scaleX = scale
                             scaleY = scale
                         }
-                        .shadow((5f + updatePulse * 5f).dp, RoundedCornerShape(11.dp))
+                        .shadow((8f + updatePulse * 12f).dp, RoundedCornerShape(11.dp))
                         .clip(RoundedCornerShape(11.dp))
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
                                     Color(
-                                        red = 0.20f + updatePulse * 0.10f,
-                                        green = 0.72f + updatePulse * 0.16f,
-                                        blue = 0.39f + updatePulse * 0.08f
+                                        red = 0.02f + updatePulse * 0.05f,
+                                        green = 0.42f + updatePulse * 0.35f,
+                                        blue = 0.18f + updatePulse * 0.16f
                                     ),
                                     Color(
-                                        red = 0.08f + updatePulse * 0.04f,
-                                        green = 0.58f + updatePulse * 0.12f,
-                                        blue = 0.29f + updatePulse * 0.07f
+                                        red = 0.01f + updatePulse * 0.05f,
+                                        green = 0.62f + updatePulse * 0.35f,
+                                        blue = 0.28f + updatePulse * 0.18f
+                                    ),
+                                    Color(
+                                        red = 0.01f + updatePulse * 0.04f,
+                                        green = 0.35f + updatePulse * 0.32f,
+                                        blue = 0.14f + updatePulse * 0.18f
                                     )
                                 )
                             )
