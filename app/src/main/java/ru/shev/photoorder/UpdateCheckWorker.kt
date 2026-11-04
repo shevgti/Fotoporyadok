@@ -87,7 +87,7 @@ internal class UpdateCheckWorker(
         private const val PREFS = "photoorder_update_worker"
         private const val KEY_NOTIFIED_VERSION = "notified_version_code"
         private const val CHANNEL_ID = "photoorder_updates"
-        private const val NOTIFICATION_ID = 2201
+        private const val NOTIFICATION_ID = 1002
         private const val UNIQUE_WORK = "photoorder_periodic_update_check"
         private const val IMMEDIATE_WORK = "photoorder_update_check_immediate"
 
