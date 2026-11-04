@@ -305,9 +305,10 @@ private fun PhotoOrderScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
-    // Seed dialog state directly from notification data before any effect or network work.
-    var updateInfo by remember(notificationUpdateInfo) { mutableStateOf(notificationUpdateInfo) }
-    var showUpdateDialog by remember(openUpdateDialogRequest, notificationUpdateInfo) {
+    // Seed dialog state from notification data once; later intent updates are applied by the effect below.
+    // Keep this state independent from notificationUpdateInfo, which is cleared after handling.
+    var updateInfo by remember { mutableStateOf(notificationUpdateInfo) }
+    var showUpdateDialog by remember {
         mutableStateOf(openUpdateDialogRequest && notificationUpdateInfo != null)
     }
     var updateMessage by remember { mutableStateOf<String?>(null) }
