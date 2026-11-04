@@ -660,7 +660,6 @@ private fun PhotoOrderScreen(
                     Text("10 тем с фотографиями. Для загрузки фона нужен интернет.", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
                     TextButton(
                         onClick = {
-                            expandedSettingsSection = null
                             scope.launch { drawerState.close() }
                         },
                         modifier = Modifier.align(Alignment.End).padding(end = 12.dp)
