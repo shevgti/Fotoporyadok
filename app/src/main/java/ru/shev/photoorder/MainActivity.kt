@@ -26,6 +26,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -629,19 +630,29 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-                    .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+                    .shadow(7.dp, RoundedCornerShape(15.dp))
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(Brush.verticalGradient(listOf(palette.card, palette.surface, palette.card)))
+                    .border(1.dp, Color.White.copy(alpha = 0.62f), RoundedCornerShape(15.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
+                    val active = selectedTab == index
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-                             .background(if (selectedTab == index) palette.primary else Color.Transparent)
-                            .clickable { selectedTab = index }.padding(vertical = 5.dp),
+                        modifier = Modifier.weight(1f)
+                            .shadow(if (active) 5.dp else 0.dp, SlantedButtonShape(0.12f))
+                            .clip(SlantedButtonShape(0.12f))
+                            .background(
+                                if (active) Brush.verticalGradient(listOf(palette.secondary, palette.primary))
+                                else Brush.verticalGradient(listOf(palette.card, palette.surface))
+                            )
+                            .clickable { selectedTab = index }.padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(label, fontSize = 12.sp, color = if (selectedTab == index) Color.White else palette.muted,
-                            fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal)
+                        Text(label, fontSize = 12.sp, color = if (active) palette.onPrimary else palette.muted,
+                            fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold)
                     }
                 }
             }
@@ -974,50 +985,86 @@ private fun FullscreenMediaViewer(
 
 @Composable
 private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () -> Unit) {
+    val shape = SlantedButtonShape(0.10f)
     Box(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-            .background(palette.primary)
-            .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 13.dp),
+        modifier = Modifier.fillMaxWidth()
+            .shadow(12.dp, shape)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(palette.secondary, palette.primary, palette.primary.copy(alpha = 0.82f))
+                )
+            )
+            .border(
+                1.dp,
+                Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.88f), palette.primary.copy(alpha = 0.35f))),
+                shape
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = palette.onPrimary, fontWeight = FontWeight.Bold)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = palette.onPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            Box(Modifier.fillMaxWidth(0.58f).height(1.dp).background(Color.White.copy(alpha = 0.52f)))
+        }
     }
 }
 
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color, palette: AppTheme) {
+    val shape = RoundedCornerShape(17.dp)
     Card(
-        modifier = modifier.shadow(2.dp, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = palette.card),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 0.dp)
+        modifier = modifier.shadow(10.dp, shape),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 1.dp)
     ) {
-        Column(
+        Box(
             modifier = Modifier.fillMaxWidth()
-                 .padding(vertical = 12.dp, horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+                .background(Brush.verticalGradient(listOf(palette.card.copy(alpha = 0.98f), palette.surface, palette.card)))
+                .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.92f), accent.copy(alpha = 0.24f))), shape)
         ) {
-            Text(label, color = palette.muted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            Text(value, color = palette.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(label, color = palette.muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(value, color = palette.text, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+            }
         }
     }
 }
 
 @Composable
 private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onClick: () -> Unit) {
+    val shape = SlantedButtonShape(0.14f)
+    val fill = if (selected) {
+        Brush.verticalGradient(listOf(palette.secondary, palette.primary, palette.primary.copy(alpha = 0.86f)))
+    } else {
+        Brush.verticalGradient(listOf(palette.card, palette.surface, palette.card.copy(alpha = 0.92f)))
+    }
     Box(
-        modifier = Modifier.height(30.dp).clip(RoundedCornerShape(16.dp))
-            .background(
-                if (selected) palette.primary else palette.surface
+        modifier = Modifier.height(36.dp)
+            .shadow(if (selected) 8.dp else 4.dp, shape)
+            .clip(shape)
+            .background(fill)
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(Color.White.copy(alpha = if (selected) 0.82f else 0.92f), palette.muted.copy(alpha = 0.20f))
+                ),
+                shape
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 6.dp),
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = if (selected) "✓ $label" else label,
-            color = if (selected) Color.White else palette.muted,
-            fontSize = 12.sp
+            color = if (selected) palette.onPrimary else palette.text,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold
         )
     }
 }
