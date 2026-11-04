@@ -759,9 +759,10 @@ private fun PhotoOrderScreen(
                 palette = palette,
                 modifier = Modifier.weight(1f),
                 onExit = { selectedPage = 0 },
-                onOpenMedia = { selected ->
-                    viewerMedia = allSortedMedia
-                    selectedViewerIndex = allSortedMedia.indexOfFirst { it.uri == selected.uri }.takeIf { it >= 0 }
+                onOpenMedia = { folderMedia, selected ->
+                    // Keep the viewer strictly inside the album/category that was opened.
+                    viewerMedia = folderMedia
+                    selectedViewerIndex = folderMedia.indexOfFirst { it.uri == selected.uri }.takeIf { it >= 0 }
                 }
             )
         } else if (!hasPermission) {
