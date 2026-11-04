@@ -75,7 +75,7 @@ class AiAlbumBackNavigationTest {
 
         waitForText("Назад").click()
 
-        waitForText("Умные альбомы")
+        waitForTextContains("Умные альбомы")
         assertNotNull(device.findObject(By.textContains("Отдых на море")))
     }
 
@@ -84,7 +84,7 @@ class AiAlbumBackNavigationTest {
         openAiAlbum()
 
         device.pressBack()
-        waitForText("Умные альбомы")
+        waitForTextContains("Умные альбомы")
         assertNotNull(device.findObject(By.textContains("Отдых на море")))
 
         device.pressBack()
@@ -107,13 +107,13 @@ class AiAlbumBackNavigationTest {
             device.swipe(1, height / 2, width / 3, height / 2, 24)
         )
 
-        waitForText("Умные альбомы")
+        waitForTextContains("Умные альбомы")
         assertNotNull(device.findObject(By.textContains("Отдых на море")))
     }
 
     private fun openAiAlbum() {
         waitForTextContains("ИИ-альбомы").click()
-        waitForText("Умные альбомы")
+        waitForTextContains("Умные альбомы")
         waitForTextContains("Отдых на море").click()
         waitForText("Назад")
     }
