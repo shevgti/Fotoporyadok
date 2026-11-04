@@ -20,7 +20,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 /**
  * End-to-end regression tests for the real MainActivity + AiOrganizerPage BackHandler.
@@ -88,12 +87,24 @@ class AiAlbumBackNavigationTest {
         assertNotNull(device.findObject(By.textContains("Отдых на море")))
 
         device.pressBack()
-        waitForTextContains("ИИ-альбомы")
+        waitForTextContains("Показано:")
 
         device.pressBack()
         waitForText("Выйти из ФотоПорядка?")
         waitForText("Отмена").click()
-        waitForTextContains("Главная")
+        waitForTextContains("Показано:")
+    }
+
+    @Test
+    fun systemBackFromCategoryReturnsToAiAlbumList() {
+        waitForTextContains("ИИ-альбомы").click()
+        waitForText("Природа").click()
+        waitForText("Назад")
+
+        device.pressBack()
+        waitForTextContains("Умные альбомы")
+        device.pressBack()
+        waitForTextContains("Показано:")
     }
 
     @Test
@@ -165,10 +176,10 @@ class AiAlbumBackNavigationTest {
                 val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
                     ?: error("Could not create test image in MediaStore")
                 resolver.openOutputStream(uri).use { stream ->
-                    checkNotNull(stream)
+                    val output = checkNotNull(stream)
                     val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
                     bitmap.eraseColor(Color.BLUE)
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
                     bitmap.recycle()
                 }
 
