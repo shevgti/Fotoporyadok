@@ -1163,18 +1163,42 @@ private fun FullscreenMediaViewer(
                 TextButton(onClick = onClose) { Text("✕ Закрыть", color = Color.White) }
                 Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
                 if (item.isVideo) {
-                    TextButton(
-                        onClick = {
-                            isLandscape = !isLandscape
-                            activity?.requestedOrientation = if (isLandscape) {
-                                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                            } else {
-                                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                            }
-                        },
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    Row(
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF303030))
+                            .padding(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if (isLandscape) "↕ Вертикально" else "↔ Горизонтально", color = Color.White, fontSize = 10.sp)
+                        TextButton(
+                            onClick = {
+                                isLandscape = false
+                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                            },
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                "↕ Вертикально",
+                                color = if (!isLandscape) Color(0xFF8FE3FF) else Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = if (!isLandscape) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                isLandscape = true
+                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                            },
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                "↔ Горизонтально",
+                                color = if (isLandscape) Color(0xFF8FE3FF) else Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = if (isLandscape) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
                 Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
