@@ -861,6 +861,17 @@ private fun FullscreenMediaViewer(
     if (media.isEmpty()) return
     var currentIndex by remember(media, initialIndex) { mutableStateOf(initialIndex.coerceIn(media.indices)) }
     val item = media[currentIndex]
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val initialRequestedOrientation = remember(activity) {
+        activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+    var isLandscape by remember {
+        mutableStateOf(context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+    }
+    DisposableEffect(activity) {
+        onDispose { activity?.requestedOrientation = initialRequestedOrientation }
+    }
     var dragDistance by remember { mutableStateOf(0f) }
 
     Dialog(
@@ -884,19 +895,6 @@ private fun FullscreenMediaViewer(
                 }
         ) {
             if (item.isVideo) {
-                val context = LocalContext.current
-                val activity = context as? Activity
-                val previousOrientation = remember(activity) {
-                    activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
-                var isLandscape by remember(item.uri) {
-                    mutableStateOf(context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
-                }
-                DisposableEffect(activity) {
-                    onDispose {
-                        activity?.requestedOrientation = previousOrientation
-                    }
-                }
                 val player = remember(item.uri) {
                     ExoPlayer.Builder(context).build().apply {
                         setMediaItem(PlayerMediaItem.fromUri(item.uri))
@@ -934,18 +932,20 @@ private fun FullscreenMediaViewer(
             ) {
                 TextButton(onClick = onClose) { Text("✕ Закрыть", color = Color.White) }
                 Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
-                TextButton(
-                    onClick = {
-                        isLandscape = !isLandscape
-                        activity?.requestedOrientation = if (isLandscape) {
-                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        } else {
-                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        }
-                    },
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                ) {
-                    Text(if (isLandscape) "↕ Вертикально" else "↔ Горизонтально", color = Color.White, fontSize = 10.sp)
+                if (item.isVideo) {
+                    TextButton(
+                        onClick = {
+                            isLandscape = !isLandscape
+                            activity?.requestedOrientation = if (isLandscape) {
+                                ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                            } else {
+                                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) {
+                        Text(if (isLandscape) "↕ Вертикально" else "↔ Горизонтально", color = Color.White, fontSize = 10.sp)
+                    }
                 }
                 Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
             }
