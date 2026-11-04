@@ -41,14 +41,25 @@ class AiAlbumBackNavigationTest {
     fun setUp() {
         device = UiDevice.getInstance(instrumentation)
         device.executeShellCommand("settings put secure navigation_mode 2")
-        instrumentation.uiAutomation.grantRuntimePermission(
-            context.packageName,
-            Manifest.permission.READ_MEDIA_IMAGES
-        )
-        instrumentation.uiAutomation.grantRuntimePermission(
-            context.packageName,
-            Manifest.permission.READ_MEDIA_VIDEO
-        )
+        if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+        } else {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName,
+                Manifest.permission.READ_MEDIA_IMAGES
+            )
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        }
         seedCachedAlbum()
         assertFixtureVisibleToApp()
         scenario = ActivityScenario.launch(MainActivity::class.java)
