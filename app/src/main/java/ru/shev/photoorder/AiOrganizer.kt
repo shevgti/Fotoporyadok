@@ -257,19 +257,17 @@ internal fun AiOrganizerPage(
         }
     }
 
-    // Register the current nested Back action with the Activity-level handler.
-    // This makes the hardware button and Android edge-swipe use exactly the
-    // same navigation path, even on devices with predictive Back enabled.
-    androidx.compose.runtime.SideEffect {
-        onBackActionChanged {
-            when {
-                selectedAlbum != null -> selectedAlbum = null
-                selectedCategory != null -> selectedCategory = null
-                else -> onExit()
-            }
+    // Keep the registered callback stable while its action always sees the
+    // latest album/category state. This avoids a parent-child recomposition loop.
+    val latestBackAction by rememberUpdatedState(newValue = {
+        when {
+            selectedAlbum != null -> selectedAlbum = null
+            selectedCategory != null -> selectedCategory = null
+            else -> onExit()
         }
-    }
+    })
     androidx.compose.runtime.DisposableEffect(Unit) {
+        onBackActionChanged { latestBackAction() }
         onDispose { onBackActionChanged(null) }
     }
 
