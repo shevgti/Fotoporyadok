@@ -66,12 +66,19 @@ jobs:
             echo "Skipping release: a newer main commit exists."
             exit 0
           fi
+          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)"
+          if [ -z "$version_name" ] || [ -z "$version_code" ]; then
+            echo "::error::Could not read app version from app/build.gradle.kts"
+            exit 1
+          fi
+          tag="v$version_name"
           cp app/build/outputs/apk/release/app-release.apk app-release.apk
-          if gh release view v2.0 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload v2.0 app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          if gh release view "$tag" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "$tag" app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create v2.0 app-release.apk \
+            gh release create "$tag" app-release.apk \
               --repo "${GITHUB_REPOSITORY}" \
-              --title "ФотоПорядок 2.0" \
-              --notes "versionCode: 20"
+              --title "ФотоПорядок $version_name" \
+              --notes "versionCode: $version_code"
           fi
