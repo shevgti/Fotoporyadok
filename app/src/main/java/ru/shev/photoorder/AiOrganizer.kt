@@ -229,8 +229,7 @@ internal fun AiOrganizerPage(
     media: List<MediaItem>,
     palette: AppTheme,
     modifier: Modifier = Modifier,
-    onExit: () -> Unit,
-    onBackActionChanged: ((() -> Unit)?) -> Unit
+    onExit: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -257,19 +256,17 @@ internal fun AiOrganizerPage(
         }
     }
 
-    // Keep the registered callback stable while its action always sees the
-    // latest album/category state. This avoids a parent-child recomposition loop.
-    val latestBackAction by rememberUpdatedState(newValue = {
+    // This screen owns the complete Back stack while it is visible:
+    // photo list -> album/category list -> main screen. Keeping the handler
+    // here prevents the Activity from finishing before nested state is cleared.
+    val navigateBack: () -> Unit = {
         when {
-            selectedAlbum != null -> selectedAlbum = null
             selectedCategory != null -> selectedCategory = null
+            selectedAlbum != null -> selectedAlbum = null
             else -> onExit()
         }
-    })
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        onBackActionChanged { latestBackAction() }
-        onDispose { onBackActionChanged(null) }
     }
+    androidx.activity.compose.BackHandler { navigateBack() }
 
     // Fill the bounded area provided by the parent. The weighted LazyColumn
     // then scrolls only inside this area and cannot draw over following UI.
@@ -368,7 +365,7 @@ internal fun AiOrganizerPage(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                TextButton(onClick = { selectedCategory = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
+                TextButton(onClick = navigateBack, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
             androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                 columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
@@ -414,7 +411,7 @@ internal fun AiOrganizerPage(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                TextButton(onClick = { selectedAlbum = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
+                TextButton(onClick = navigateBack, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
             androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                 columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),

@@ -237,25 +237,21 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
     var selectedPage by remember { mutableStateOf(0) }
-    var aiBackAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var sortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     var sortStatus by remember { mutableStateOf<String?>(null) }
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
-    // One Activity-level Back handler owns both the system button and the
-    // Android edge-swipe gesture. The AI page supplies the nested navigation
-    // action so Back always returns one level instead of finishing the Activity.
+    // Nested AI navigation is handled by AiOrganizerPage. On the root
+    // screen, system Back asks for confirmation instead of closing by accident.
+    // Android's bottom-up Home gesture is not a Back event and remains untouched.
     androidx.activity.compose.BackHandler(
-        enabled = selectedPage == 1 || selectedViewerIndex != null || drawerState.isOpen
+        enabled = selectedViewerIndex != null || drawerState.isOpen || selectedPage == 0
     ) {
         when {
             selectedViewerIndex != null -> selectedViewerIndex = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
-            selectedPage == 1 -> {
-                val action = aiBackAction
-                if (action != null) action() else selectedPage = 0
-            }
+            selectedPage == 0 -> showExitDialog = true
         }
     }
 
@@ -580,8 +576,7 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                 media = media,
                 palette = palette,
                 modifier = Modifier.weight(1f),
-                onExit = { selectedPage = 0 },
-                onBackActionChanged = { action -> aiBackAction = action }
+                onExit = { selectedPage = 0 }
             )
         } else if (!hasPermission) {
             Card(
