@@ -270,13 +270,13 @@ internal fun AiOrganizerPage(
 
     // Fill the bounded area provided by the parent. The weighted LazyColumn
     // then scrolls only inside this area and cannot draw over following UI.
-    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text("ИИ-фотограф", fontSize = 21.sp, color = palette.text, fontWeight = FontWeight.Bold)
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("ИИ-альбомы", fontSize = 18.sp, color = palette.text, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(
-            "Распознаёт фото на телефоне и объединяет снимки одного события в альбомы.",
+            "Группировка фото по событиям",
             color = palette.muted,
-            fontSize = 11.sp,
-            maxLines = 2,
+            fontSize = 10.sp,
+            maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
         if (analyzing) {
@@ -304,8 +304,10 @@ internal fun AiOrganizerPage(
                         status = "Не удалось завершить анализ: " + (error.message ?: "ошибка")
                     } finally { analyzing = false }
                 }
-            }, enabled = media.any { !it.isVideo } && !analyzing, modifier = Modifier.fillMaxWidth()) {
-                Text(if (results.isEmpty()) "✨ Запустить ИИ-анализ" else "↻ Проверить новые фотографии")
+            }, enabled = media.any { !it.isVideo } && !analyzing,
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                Text(if (results.isEmpty()) "✨ Анализировать фото" else "↻ Найти новые фото", fontSize = 13.sp)
             }
         }
         status?.let { Text(it, color = palette.muted, fontSize = 12.sp) }
@@ -318,17 +320,17 @@ internal fun AiOrganizerPage(
                         colors = CardDefaults.cardColors(containerColor = palette.card), shape = RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                                modifier = Modifier.fillMaxWidth().height(132.dp),
+                                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(4),
+                                modifier = Modifier.fillMaxWidth().height(156.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 userScrollEnabled = false
                             ) {
-                                items(album.photos.take(4), key = { it.media.uri.toString() }) { photo ->
+                                items(album.photos.take(8), key = { it.media.uri.toString() }) { photo ->
                                     AsyncImage(
                                         model = photo.media.uri,
                                         contentDescription = null,
-                                        modifier = Modifier.fillMaxWidth().height(62.dp),
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
