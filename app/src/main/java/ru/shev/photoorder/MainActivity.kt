@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
         createAppNotificationChannel(this)
         setContent {
             var selectedThemeId by remember {
-                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).takeIf { it in 0..1 } ?: 0)
+                mutableStateOf(getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getInt("theme_id", 0).takeIf { it in 0..9 } ?: 0)
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
