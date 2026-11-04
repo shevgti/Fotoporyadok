@@ -237,20 +237,25 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
     var selectedPage by remember { mutableStateOf(0) }
+    var aiBackAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var sortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     var sortStatus by remember { mutableStateOf<String?>(null) }
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
-    // The AI albums screen owns Back while it is visible so it can first
-    // close an opened album/category instead of letting the Activity exit.
+    // One Activity-level Back handler owns both the system button and the
+    // Android edge-swipe gesture. The AI page supplies the nested navigation
+    // action so Back always returns one level instead of finishing the Activity.
     androidx.activity.compose.BackHandler(
-        enabled = (selectedPage != 0 && selectedPage != 1) || selectedViewerIndex != null || drawerState.isOpen
+        enabled = selectedPage == 1 || selectedViewerIndex != null || drawerState.isOpen
     ) {
         when {
             selectedViewerIndex != null -> selectedViewerIndex = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
-            selectedPage != 0 -> selectedPage = 0
+            selectedPage == 1 -> {
+                val action = aiBackAction
+                if (action != null) action() else selectedPage = 0
+            }
         }
     }
 
@@ -575,7 +580,8 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                 media = media,
                 palette = palette,
                 modifier = Modifier.weight(1f),
-                onExit = { selectedPage = 0 }
+                onExit = { selectedPage = 0 },
+                onBackActionChanged = { action -> aiBackAction = action }
             )
         } else if (!hasPermission) {
             Card(
