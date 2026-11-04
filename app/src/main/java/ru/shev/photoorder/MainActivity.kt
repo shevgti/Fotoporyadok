@@ -199,7 +199,7 @@ class MainActivity : ComponentActivity() {
         val versionCode = intent.getIntExtra(EXTRA_UPDATE_VERSION_CODE, 0)
         val versionName = intent.getStringExtra(EXTRA_UPDATE_VERSION_NAME).orEmpty()
         val downloadUrl = intent.getStringExtra(EXTRA_UPDATE_DOWNLOAD_URL).orEmpty()
-        if (versionCode <= 0 || versionName.isBlank() || downloadUrl.isBlank()) return null
+        if (versionCode <= BuildConfig.VERSION_CODE || versionName.isBlank() || downloadUrl.isBlank()) return null
         return UpdateInfo(versionCode, versionName, downloadUrl,
             intent.getStringExtra(EXTRA_UPDATE_NOTES).orEmpty())
     }
@@ -350,7 +350,7 @@ private fun PhotoOrderScreen(
                     if (latest != null && latest.versionCode != updateInfo?.versionCode) {
                         updateInfo = latest
                         postAppNotification(context, "Доступно обновление ФотоПорядка",
-                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.", 1002)
+                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.", 1002, latest)
                         if (autoUpdateEnabled && autoUpdateAttemptedVersion != latest.versionCode) {
                             autoUpdateAttemptedVersion = latest.versionCode
                             downloadingUpdate = true
