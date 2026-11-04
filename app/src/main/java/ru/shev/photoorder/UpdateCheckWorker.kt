@@ -29,6 +29,8 @@ internal class UpdateCheckWorker(
     override suspend fun doWork(): Result {
         return try {
             val update = AppUpdater.check(BuildConfig.VERSION_CODE) ?: return Result.success()
+            val appPrefs = applicationContext.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+            if (!appPrefs.getBoolean("notifications_enabled", true)) return Result.success()
             val prefs = applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val notifiedVersion = prefs.getInt(KEY_NOTIFIED_VERSION, 0)
             if (update.versionCode <= notifiedVersion) return Result.success()
