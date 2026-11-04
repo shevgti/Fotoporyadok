@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android-ui-tests:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     name: Back navigation on Android Emulator
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -58,7 +59,7 @@ jobs:
 
   build:
     needs: android-ui-tests
-    if: github.event_name != 'pull_request'
+    if: always() && github.event_name != 'pull_request' && (needs.android-ui-tests.result == 'success' || needs.android-ui-tests.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
