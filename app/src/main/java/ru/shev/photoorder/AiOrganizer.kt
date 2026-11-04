@@ -354,7 +354,7 @@ internal fun AiOrganizerPage(
                                             horizontalArrangement = Arrangement.spacedBy(3.dp),
                                             userScrollEnabled = false
                                         ) {
-                                            items(album.photos.take(4), key = { it.media.uri.toString() }) { photo ->
+                                            items(album.photos.take(3), key = { it.media.uri.toString() }) { photo ->
                                                 AsyncImage(
                                                     model = photo.media.uri,
                                                     contentDescription = null,
