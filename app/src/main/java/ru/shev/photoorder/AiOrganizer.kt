@@ -8,8 +8,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clip
@@ -247,6 +244,11 @@ internal fun AiOrganizerPage(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var zoomedPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
     var previewHeld by remember { mutableStateOf(false) }
+    val previewProgress by animateFloatAsState(
+        targetValue = if (previewHeld) 1f else 0f,
+        animationSpec = tween(durationMillis = 260),
+        label = "photoPreviewProgress"
+    )
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -482,11 +484,6 @@ internal fun AiOrganizerPage(
     }
 
     zoomedPhoto?.let { photo ->
-        val previewScale by animateFloatAsState(
-            targetValue = if (previewHeld) 1.42f else 0.82f,
-            animationSpec = tween(durationMillis = 240),
-            label = "photoPreviewScale"
-        )
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = androidx.compose.ui.Alignment.Center
@@ -494,12 +491,8 @@ internal fun AiOrganizerPage(
             AsyncImage(
                 model = photo.media.uri,
                 contentDescription = photo.media.name,
-                modifier = Modifier.fillMaxWidth(0.99f)
-                    .height(maxHeight * 0.84f)
-                    .graphicsLayer {
-                        scaleX = previewScale
-                        scaleY = previewScale
-                    },
+                modifier = Modifier.fillMaxWidth(0.62f + 0.37f * previewProgress)
+                    .height(maxHeight * (0.52f + 0.32f * previewProgress)),
                 contentScale = ContentScale.Fit
             )
         }
