@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -63,6 +64,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -112,6 +114,7 @@ import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -304,6 +307,13 @@ private fun PhotoOrderScreen(
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
+    var zoomedMainPhoto by remember { mutableStateOf<MediaItem?>(null) }
+    var mainPreviewHeld by remember { mutableStateOf(false) }
+    val mainPreviewProgress by animateFloatAsState(
+        targetValue = if (mainPreviewHeld) 1f else 0f,
+        animationSpec = tween(durationMillis = 260),
+        label = "mainGalleryPhotoPreviewProgress"
+    )
     var refreshKey by remember { mutableStateOf(0) }
     // Seed dialog state from notification data once; later intent updates are applied by the effect below.
     // Keep this state independent from notificationUpdateInfo, which is cleared after handling.
@@ -329,6 +339,7 @@ private fun PhotoOrderScreen(
         enabled = selectedViewerIndex != null || drawerState.isOpen || selectedPage == 0
     ) {
         when {
+            zoomedMainPhoto != null -> { zoomedMainPhoto = null; mainPreviewHeld = false }
             selectedViewerIndex != null -> selectedViewerIndex = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
             selectedPage == 0 -> showExitDialog = true
@@ -826,22 +837,32 @@ private fun PhotoOrderScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
-                        val pressInteraction = remember(item.uri) { MutableInteractionSource() }
-                        val isPhotoPressed by pressInteraction.collectIsPressedAsState()
-                        val photoScale by animateFloatAsState(
-                            targetValue = if (isPhotoPressed && !item.isVideo) 1.82f else 1f,
-                            animationSpec = tween(durationMillis = 140),
-                            label = "galleryPhotoPressScale"
-                        )
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = palette.card),
-                            modifier = Modifier
-                                .zIndex(if (isPhotoPressed && !item.isVideo) 5f else 0f)
-                                .graphicsLayer { scaleX = photoScale; scaleY = photoScale }
-                                .clickable(interactionSource = pressInteraction, indication = null) {
-                                    selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
-                                },
+                            modifier = Modifier.pointerInput(item.uri) {
+                                detectTapGestures(
+                                    onTap = {
+                                        selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
+                                    },
+                                    onLongPress = {
+                                        if (!item.isVideo) {
+                                            zoomedMainPhoto = item
+                                            mainPreviewHeld = true
+                                        }
+                                    },
+                                    onPress = {
+                                        tryAwaitRelease()
+                                        if (zoomedMainPhoto?.uri == item.uri) {
+                                            mainPreviewHeld = false
+                                            delay(240)
+                                            if (!mainPreviewHeld && zoomedMainPhoto?.uri == item.uri) {
+                                                zoomedMainPhoto = null
+                                            }
+                                        }
+                                    }
+                                )
+                            },
                         ) {
                             Column {
                                 if (item.isVideo) {
@@ -886,6 +907,25 @@ private fun PhotoOrderScreen(
             }
         }
     }
+    }
+
+    // Match the album photo preview: a centered, screen-sized overlay that
+    // grows while the finger is held, without scaling or moving the grid cell.
+    if (selectedPage == 0) {
+        zoomedMainPhoto?.let { photo ->
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = photo.uri,
+                    contentDescription = photo.name,
+                    modifier = Modifier.fillMaxWidth(0.62f + 0.37f * mainPreviewProgress)
+                        .height(maxHeight * (0.52f + 0.40f * mainPreviewProgress)),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
     }
 
     if (showAboutDialog) {
