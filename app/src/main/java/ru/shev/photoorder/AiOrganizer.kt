@@ -8,8 +8,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,8 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -242,6 +238,7 @@ internal fun AiOrganizerPage(
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var zoomedPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -261,6 +258,7 @@ internal fun AiOrganizerPage(
     // here prevents the Activity from finishing before nested state is cleared.
     val navigateBack: () -> Unit = {
         when {
+            zoomedPhoto != null -> zoomedPhoto = null
             selectedCategory != null -> selectedCategory = null
             selectedAlbum != null -> selectedAlbum = null
             else -> onExit()
@@ -268,9 +266,10 @@ internal fun AiOrganizerPage(
     }
     androidx.activity.compose.BackHandler { navigateBack() }
 
-    // Fill the bounded area provided by the parent. The weighted LazyColumn
-    // then scrolls only inside this area and cannot draw over following UI.
-    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // The preview is drawn in a screen-sized overlay, not by scaling a lazy-grid
+    // cell. This keeps the image centered and inside the app viewport.
+    Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("ИИ-альбомы", fontSize = 18.sp, color = palette.text, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(
             "Группировка фото по событиям",
@@ -384,20 +383,15 @@ internal fun AiOrganizerPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
+                    val interaction = remember(photo.media.uri) { MutableInteractionSource() }
+                    val pressed by interaction.collectIsPressedAsState()
+                    LaunchedEffect(pressed) {
+                        if (pressed) zoomedPhoto = photo
+                        else if (zoomedPhoto?.media?.uri == photo.media.uri) zoomedPhoto = null
+                    }
                     Card(
-                        modifier = run {
-                            val interaction = remember(photo.media.uri) { MutableInteractionSource() }
-                            val pressed by interaction.collectIsPressedAsState()
-                            val scale by animateFloatAsState(
-                                targetValue = if (pressed) 1.65f else 1f,
-                                animationSpec = tween(durationMillis = 130),
-                                label = "photoPressScale"
-                            )
-                            Modifier.fillMaxWidth()
-                                .zIndex(if (pressed) 5f else 0f)
-                                .graphicsLayer { scaleX = scale; scaleY = scale }
-                                .clickable(interactionSource = interaction, indication = null) { }
-                        },
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable(interactionSource = interaction, indication = null) { },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -433,20 +427,15 @@ internal fun AiOrganizerPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(album.photos, key = { it.media.uri.toString() }) { photo ->
+                    val interaction = remember(photo.media.uri) { MutableInteractionSource() }
+                    val pressed by interaction.collectIsPressedAsState()
+                    LaunchedEffect(pressed) {
+                        if (pressed) zoomedPhoto = photo
+                        else if (zoomedPhoto?.media?.uri == photo.media.uri) zoomedPhoto = null
+                    }
                     Card(
-                        modifier = run {
-                            val interaction = remember(photo.media.uri) { MutableInteractionSource() }
-                            val pressed by interaction.collectIsPressedAsState()
-                            val scale by animateFloatAsState(
-                                targetValue = if (pressed) 1.65f else 1f,
-                                animationSpec = tween(durationMillis = 130),
-                                label = "photoPressScale"
-                            )
-                            Modifier.fillMaxWidth()
-                                .zIndex(if (pressed) 5f else 0f)
-                                .graphicsLayer { scaleX = scale; scaleY = scale }
-                                .clickable(interactionSource = interaction, indication = null) { }
-                        },
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable(interactionSource = interaction, indication = null) { },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -464,4 +453,25 @@ internal fun AiOrganizerPage(
         }
     }
 
+    zoomedPhoto?.let { photo ->
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.82f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { zoomedPhoto = null },
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            AsyncImage(
+                model = photo.media.uri,
+                contentDescription = photo.media.name,
+                modifier = Modifier.fillMaxWidth(0.92f)
+                    .height(maxHeight * 0.56f)
+                    .clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
+    }
 }
