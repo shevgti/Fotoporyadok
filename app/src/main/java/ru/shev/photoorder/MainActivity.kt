@@ -820,13 +820,14 @@ private fun PhotoOrderScreen(
                             )
                         )
                         .clickable(enabled = !downloadingUpdate) { showUpdateDialog = true }
-                        .padding(horizontal = 6.dp, vertical = 5.dp)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
                             "● Обновление",
                             color = Color.White,
                             fontSize = 8.sp,
+                            lineHeight = 9.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1
                         )
@@ -834,6 +835,7 @@ private fun PhotoOrderScreen(
                             "Версия ${updateInfo?.versionName}",
                             color = Color.White.copy(alpha = 0.94f),
                             fontSize = 8.sp,
+                            lineHeight = 9.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
