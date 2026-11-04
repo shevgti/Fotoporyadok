@@ -309,12 +309,10 @@ private fun PhotoOrderScreen(
     val context = LocalContext.current
     val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    var showThemePicker by remember { mutableStateOf(false) }
+    var expandedSettingsSection by remember { mutableStateOf<String?>(null) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(appNotificationsEnabled(context)) }
-    var showNotificationSettings by remember { mutableStateOf(false) }
-    var showUpdateSettings by remember { mutableStateOf(false) }
     var autoUpdateEnabled by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("auto_update_enabled", false)) }
     var appNotificationPreference by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("notifications_enabled", true)) }
     var autoUpdateAttemptedVersion by remember { mutableStateOf(0) }
@@ -535,17 +533,15 @@ private fun PhotoOrderScreen(
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable {
                             notificationsEnabled = appNotificationsEnabled(context)
-                            val expand = !showNotificationSettings
-                            showNotificationSettings = expand
-                            if (expand) { showUpdateSettings = false; showThemePicker = false }
+                            expandedSettingsSection = if (expandedSettingsSection == "notifications") null else "notifications"
                         }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
                     Text((if (notificationsEnabled && appNotificationPreference) "🔔  Уведомления включены" else "🔕  Уведомления выключены") +
-                        if (showNotificationSettings) "  ▲" else "  ▼",
+                        if (expandedSettingsSection == "notifications") "  ▲" else "  ▼",
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
-                if (showNotificationSettings) {
+                if (expandedSettingsSection == "notifications") {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (systemNotificationsAllowed(context)) "Системное разрешение Android: включено" else "Системное разрешение Android: выключено",
                             color = palette.muted, fontSize = 11.sp)
@@ -580,14 +576,12 @@ private fun PhotoOrderScreen(
                 Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).shadow(4.dp, RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                     .clickable {
-                        val expand = !showUpdateSettings
-                        showUpdateSettings = expand
-                        if (expand) { showNotificationSettings = false; showThemePicker = false }
+                        expandedSettingsSection = if (expandedSettingsSection == "updates") null else "updates"
                     }.padding(horizontal = 14.dp, vertical = 13.dp)) {
-                    Text(if (showUpdateSettings) "↻  Обновления ▲" else "↻  Обновления ▼",
+                    Text(if (expandedSettingsSection == "updates") "↻  Обновления ▲" else "↻  Обновления ▼",
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
-                if (showUpdateSettings) {
+                if (expandedSettingsSection == "updates") {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Как устанавливать новые версии?", color = palette.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         listOf(false to "Спрашивать перед обновлением", true to "Автоматически скачивать обновления").forEach { (enabled, label) ->
@@ -625,15 +619,13 @@ private fun PhotoOrderScreen(
                         .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable {
-                            val expand = !showThemePicker
-                            showThemePicker = expand
-                            if (expand) { showNotificationSettings = false; showUpdateSettings = false }
+                            expandedSettingsSection = if (expandedSettingsSection == "appearance") null else "appearance"
                         }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
-                    Text(if (showThemePicker) "🎨  Скрыть оформление ▲" else "🎨  Оформление ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(if (expandedSettingsSection == "appearance") "🎨  Скрыть оформление ▲" else "🎨  Оформление ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
-                if (showThemePicker) {
+                if (expandedSettingsSection == "appearance") {
                     Text("Внешний вид", modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 8.dp), color = palette.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(5),
@@ -668,7 +660,7 @@ private fun PhotoOrderScreen(
                     Text("10 тем с фотографиями. Для загрузки фона нужен интернет.", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
                     TextButton(
                         onClick = {
-                            showThemePicker = false
+                            expandedSettingsSection == "appearance" = false
                             scope.launch { drawerState.close() }
                         },
                         modifier = Modifier.align(Alignment.End).padding(end = 12.dp)
