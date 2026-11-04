@@ -188,7 +188,7 @@ class MainActivity : ComponentActivity() {
             }
             val palette = appThemes[selectedThemeId]
             MaterialTheme(
-                colorScheme = if (selectedThemeId == 0) {
+                colorScheme = if (!palette.isDark) {
                     lightColorScheme(primary = palette.primary, onPrimary = palette.onPrimary, secondary = palette.secondary,
                         background = palette.background, surface = palette.surface, onSurface = palette.text)
                 } else {
@@ -412,13 +412,19 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                     .padding(horizontal = 4.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(theme.name.substringAfter("—").trim(), color = theme.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                AsyncImage(
+                                    model = theme.wallpaperUrl,
+                                    contentDescription = "Фото темы ${theme.name}",
+                                    modifier = Modifier.fillMaxWidth().height(42.dp).clip(RoundedCornerShape(7.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Text(theme.name, color = theme.text, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(theme.primary))
                                 if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
-                    Text("Выбери светлый или тёмный режим", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
+                    Text("10 тем с фотографиями. Для загрузки фона нужен интернет.", modifier = Modifier.padding(start = 12.dp, bottom = 4.dp), color = palette.muted, fontSize = 10.sp)
                     TextButton(
                         onClick = {
                             showThemePicker = false
