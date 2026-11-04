@@ -1236,7 +1236,11 @@ private fun FullscreenMediaViewer(
                         }
                     },
                     modifier = Modifier.align(Alignment.BottomEnd)
-                        .padding(end = 18.dp, bottom = 76.dp)
+                        // The fullscreen dialog draws edge-to-edge. Respect safe drawing
+                        // insets (including the side inset in landscape) before placing
+                        // the orientation control so it never sits beyond the display.
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .padding(end = 12.dp, bottom = 76.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xCC202020))
                 ) {
@@ -1505,7 +1509,14 @@ private fun VideoThumbnail(item: MediaItem, palette: AppTheme) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(palette.surface)) {
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(palette.surface)
+    ) {
+        // Play marks scale with the actual tile width, so dense 4–5 column
+        // layouts keep the video indicator compact instead of covering the frame.
+        val centerPlaySize = (maxWidth.value * 0.22f).coerceIn(9f, 18f).sp
+        val badgePlaySize = (maxWidth.value * 0.14f).coerceIn(7f, 11f).sp
+        val badgeInset = (maxWidth.value * 0.09f).coerceIn(3f, 8f).dp
         if (frame != null) {
             AsyncImage(
                 model = frame,
@@ -1515,14 +1526,14 @@ private fun VideoThumbnail(item: MediaItem, palette: AppTheme) {
             )
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("▶", color = palette.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("▶", color = palette.accent, fontSize = centerPlaySize, fontWeight = FontWeight.Bold)
             }
         }
         Box(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
-                .clip(RoundedCornerShape(8.dp)).background(Color(0xAA000000))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) { Text("▶", color = Color.White, fontSize = 11.sp) }
+            modifier = Modifier.align(Alignment.BottomEnd).padding(badgeInset)
+                .clip(RoundedCornerShape((badgeInset.value).dp)).background(Color(0xAA000000))
+                .padding(horizontal = badgeInset, vertical = badgeInset * 0.5f)
+        ) { Text("▶", color = Color.White, fontSize = badgePlaySize, lineHeight = badgePlaySize) }
     }
 }
 
