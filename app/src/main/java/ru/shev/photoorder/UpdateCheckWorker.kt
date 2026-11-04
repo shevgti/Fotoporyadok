@@ -29,12 +29,17 @@ internal class UpdateCheckWorker(
 
     override suspend fun doWork(): Result {
         saveStatus("Фоновая проверка выполняется…")
+        val appPrefs = applicationContext.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+        if (!appPrefs.getBoolean("auto_update_enabled", false)) {
+            NotificationManagerCompat.from(applicationContext).cancel(NOTIFICATION_ID)
+            saveStatus("Автоматические обновления выключены: фоновые уведомления отключены")
+            return Result.success()
+        }
         return try {
             val update = AppUpdater.check(BuildConfig.VERSION_CODE) ?: run {
                 saveStatus("Новых версий не найдено")
                 return Result.success()
             }
-            val appPrefs = applicationContext.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
             if (!appPrefs.getBoolean("notifications_enabled", true)) {
                 saveStatus("Уведомления выключены в настройках ФотоПорядка")
                 return Result.success()
@@ -76,10 +81,6 @@ internal class UpdateCheckWorker(
         } catch (error: Exception) {
             saveStatus("Ошибка фоновой проверки: ${error.message ?: error.javaClass.simpleName}")
             Result.retry()
-        } finally {
-            // Temporary test mode: append another one-time check after this run.
-            // Periodic WorkManager jobs cannot run more often than every 15 minutes.
-            if (FAST_TEST_MODE) enqueueNextTestCheck()
         }
     }
 
@@ -154,16 +155,22 @@ internal class UpdateCheckWorker(
         private const val UNIQUE_WORK = "photoorder_periodic_update_check"
         private const val IMMEDIATE_WORK = "photoorder_update_check_immediate"
 
-        // TEMPORARY: set FAST_TEST_MODE back to false after notification testing.
-        internal const val FAST_TEST_MODE = true
+        // Production schedule; rapid test polling is disabled.
+        internal const val FAST_TEST_MODE = false
         internal const val TEST_INTERVAL_MINUTES = 2
 
         fun schedule(context: Context) {
+            val prefs = context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+            val manager = WorkManager.getInstance(context)
+            if (!prefs.getBoolean("auto_update_enabled", false)) {
+                manager.cancelUniqueWork(UNIQUE_WORK)
+                manager.cancelUniqueWork(IMMEDIATE_WORK)
+                NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+                return
+            }
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-            val manager = WorkManager.getInstance(context)
-
             if (FAST_TEST_MODE) {
                 // Replace the normal periodic schedule with a temporary 2-minute
                 // one-time chain. Android may still defer execution in Doze/HyperOS.
