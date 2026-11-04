@@ -107,6 +107,7 @@ internal class UpdateCheckWorker(
     }
 
     private fun showUpdateNotification(update: UpdateInfo): Boolean {
+        saveNotificationUpdate(applicationContext, update)
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
