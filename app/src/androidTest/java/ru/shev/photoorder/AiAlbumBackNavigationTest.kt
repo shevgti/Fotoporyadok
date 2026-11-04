@@ -158,6 +158,9 @@ class AiAlbumBackNavigationTest {
                     "uri TEXT PRIMARY KEY, signature TEXT NOT NULL, " +
                     "labels TEXT NOT NULL, category TEXT NOT NULL)"
             )
+            // Match AiLabelCache's SQLiteOpenHelper schema version so its onCreate()
+            // does not try to recreate the table when the app opens the database.
+            db.version = 1
             db.delete("labels", null, null)
 
             val baseTime = System.currentTimeMillis() - 30 * 60 * 1000L
