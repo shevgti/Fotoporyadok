@@ -918,63 +918,45 @@ private fun PhotoOrderScreen(
                                 )
                             },
                         ) {
-                            Column {
+                            BoxWithConstraints(
+                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                            ) {
                                 if (item.isVideo) {
                                     VideoThumbnail(item = item, palette = palette)
                                 } else {
                                     AsyncImage(
                                         model = item.uri,
                                         contentDescription = item.name,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .background(palette.surface),
+                                        modifier = Modifier.fillMaxSize().background(palette.surface),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
                                 if (gridColumnCount <= 2) {
-                                    BoxWithConstraints(
-                                        modifier = Modifier.fillMaxWidth().background(palette.background)
+                                    // Text sits directly over the photo: no strip, panel or opaque background.
+                                    val nameSize = if (maxWidth < 120.dp) 8.sp else 9.sp
+                                    val dateSize = if (maxWidth < 120.dp) 7.sp else 8.sp
+                                    Column(
+                                        modifier = Modifier.align(Alignment.BottomStart)
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                                        verticalArrangement = Arrangement.spacedBy(0.dp)
                                     ) {
-                                        // Keep the compact caption only in one- and two-column layouts.
-                                        val captionHeight = when {
-                                            maxWidth < 85.dp -> 18.dp
-                                            maxWidth < 120.dp -> 21.dp
-                                            else -> 25.dp
-                                        }
-                                        val nameSize = when {
-                                            maxWidth < 85.dp -> 7.sp
-                                            maxWidth < 120.dp -> 8.sp
-                                            else -> 9.sp
-                                        }
-                                        val dateSize = when {
-                                            maxWidth < 85.dp -> 6.sp
-                                            maxWidth < 120.dp -> 7.sp
-                                            else -> 8.sp
-                                        }
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth()
-                                                .height(captionHeight)
-                                                .padding(horizontal = 3.dp, vertical = 1.dp),
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Text(
-                                                item.name,
-                                                maxLines = 1,
-                                                fontWeight = FontWeight.Medium,
-                                                color = palette.text,
-                                                fontSize = nameSize,
-                                                lineHeight = nameSize,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                formatDate(item.dateSeconds),
-                                                color = palette.muted,
-                                                fontSize = dateSize,
-                                                lineHeight = dateSize,
-                                                maxLines = 1
-                                            )
-                                        }
+                                        Text(
+                                            item.name,
+                                            maxLines = 1,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = palette.text,
+                                            fontSize = nameSize,
+                                            lineHeight = nameSize,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            formatDate(item.dateSeconds),
+                                            color = palette.text,
+                                            fontSize = dateSize,
+                                            lineHeight = dateSize,
+                                            maxLines = 1
+                                        )
                                     }
                                 }
                             }
