@@ -711,13 +711,30 @@ private fun PhotoOrderScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AsyncImage(
-                    model = R.drawable.fotoporyadok_mark,
-                    contentDescription = "Знак ФотоПорядка",
-                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).clickable { scope.launch { drawerState.open() } },
-                    contentScale = ContentScale.Crop
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.clickable { scope.launch { drawerState.open() } }
+                ) {
+                    Box(
+                        modifier = Modifier.size(42.dp)
+                            .shadow(3.dp, RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(palette.card)
+                            .border(1.5.dp, palette.primary, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = R.drawable.fotoporyadok_mark,
+                            contentDescription = "Открыть меню",
+                            modifier = Modifier.size(29.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Text("МЕНЮ", fontSize = 8.sp, lineHeight = 9.sp,
+                        fontWeight = FontWeight.ExtraBold, color = palette.primary)
+                }
                 Column {
                     Text("ФотоПорядок", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = palette.text)
                     Text("ФОТО И ВИДЕО", fontSize = 10.sp, color = palette.muted, fontWeight = FontWeight.Medium)
