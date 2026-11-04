@@ -224,6 +224,11 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(appNotificationsEnabled(context)) }
+    var showNotificationSettings by remember { mutableStateOf(false) }
+    var showUpdateSettings by remember { mutableStateOf(false) }
+    var autoUpdateEnabled by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("auto_update_enabled", false)) }
+    var appNotificationPreference by remember { mutableStateOf(context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("notifications_enabled", true)) }
+    var autoUpdateAttemptedVersion by remember { mutableStateOf(0) }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -267,12 +272,22 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                     val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
                     if (latest != null && latest.versionCode != updateInfo?.versionCode) {
                         updateInfo = latest
-                        postAppNotification(
-                            context,
-                            "Доступно обновление ФотоПорядка",
-                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
-                            1002
-                        )
+                        postAppNotification(context, "Доступно обновление ФотоПорядка",
+                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.", 1002)
+                        if (autoUpdateEnabled && autoUpdateAttemptedVersion != latest.versionCode) {
+                            autoUpdateAttemptedVersion = latest.versionCode
+                            downloadingUpdate = true
+                            try {
+                                val started = AppUpdater.downloadAndInstall(context, latest) { downloaded, total ->
+                                    updateDownloadedBytes = downloaded
+                                    updateTotalBytes = total
+                                }
+                                if (started) updateInfo = null
+                                else updateMessage = "Разреши установку приложений для ФотоПорядка в настройках Android, затем снова открой приложение."
+                            } catch (error: Exception) {
+                                updateMessage = "Автоматическая загрузка не удалась: ${error.message ?: error.javaClass.simpleName}. Можно повторить вручную."
+                            } finally { downloadingUpdate = false }
+                        } else if (!autoUpdateEnabled) showUpdateDialog = true
                     } else if (latest == null) {
                         updateInfo = null
                     }
@@ -372,31 +387,69 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
-                        .clickable {
-                            if (Build.VERSION.SDK_INT >= 33 &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                            ) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                notificationsEnabled = appNotificationsEnabled(context)
-                                if (notificationsEnabled) {
-                                    postAppNotification(context, "ФотоПорядок", "Уведомления работают.", 1001)
-                                } else {
-                                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            }
-                        }
+                        .clickable { notificationsEnabled = appNotificationsEnabled(context); showNotificationSettings = !showNotificationSettings }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
-                    Text(
-                        if (notificationsEnabled) "🔔  Уведомления включены" else "🔕  Включить уведомления",
-                        color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold
-                    )
+                    Text((if (notificationsEnabled && appNotificationPreference) "🔔  Уведомления включены" else "🔕  Уведомления выключены") +
+                        if (showNotificationSettings) "  ▲" else "  ▼",
+                        color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                if (showNotificationSettings) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(if (notificationsEnabled) "Системное разрешение Android: включено" else "Системное разрешение Android: выключено",
+                            color = palette.muted, fontSize = 11.sp)
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(palette.card)
+                            .clickable {
+                                val next = !appNotificationPreference
+                                appNotificationPreference = next
+                                context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).edit().putBoolean("notifications_enabled", next).apply()
+                                if (next && !appNotificationsEnabled(context)) {
+                                    if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    else context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    })
+                                }
+                                notificationsEnabled = appNotificationsEnabled(context)
+                            }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Разрешить уведомления ФотоПорядка", color = palette.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(if (appNotificationPreference) "В приложении включены" else "В приложении отключены", color = palette.muted, fontSize = 10.sp)
+                            }
+                            Text(if (appNotificationPreference) "ВКЛ" else "ВЫКЛ", color = if (appNotificationPreference) palette.accent else palette.muted, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                        if (!notificationsEnabled) TextButton(onClick = {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            })
+                        }) { Text("Открыть настройки Android") }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).shadow(4.dp, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp)).background(palette.primary)
+                    .clickable { showUpdateSettings = !showUpdateSettings }.padding(horizontal = 14.dp, vertical = 13.dp)) {
+                    Text(if (showUpdateSettings) "↻  Обновления ▲" else "↻  Обновления ▼",
+                        color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                if (showUpdateSettings) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Как устанавливать новые версии?", color = palette.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        listOf(false to "Спрашивать перед обновлением", true to "Автоматически скачивать обновления").forEach { (enabled, label) ->
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(palette.card)
+                                .clickable {
+                                    autoUpdateEnabled = enabled
+                                    context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).edit().putBoolean("auto_update_enabled", enabled).apply()
+                                }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (autoUpdateEnabled == enabled) "◉" else "○", color = palette.accent, fontSize = 17.sp)
+                                Text(label, color = palette.text, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                        Text("Автоматически скачает APK. Перед установкой Android всё равно попросит подтверждение.",
+                            color = palette.muted, fontSize = 10.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .shadow(4.dp, RoundedCornerShape(16.dp))
@@ -1020,6 +1073,7 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
 private const val APP_NOTIFICATION_CHANNEL = "photoorder_updates"
 
 private fun appNotificationsEnabled(context: Context): Boolean {
+    if (!context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("notifications_enabled", true)) return false
     if (Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     ) return false
