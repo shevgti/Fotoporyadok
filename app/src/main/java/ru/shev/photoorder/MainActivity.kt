@@ -1520,7 +1520,7 @@ private fun StatTile(label: String, value: String, modifier: Modifier, accent: C
                 .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.92f), accent.copy(alpha = 0.24f))), shape)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(label, color = palette.muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
