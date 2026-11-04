@@ -75,7 +75,26 @@ internal class UpdateCheckWorker(
         } catch (error: Exception) {
             saveStatus("Ошибка фоновой проверки: ${error.message ?: error.javaClass.simpleName}")
             Result.retry()
+        } finally {
+            // Temporary test mode: append another one-time check after this run.
+            // Periodic WorkManager jobs cannot run more often than every 15 minutes.
+            if (FAST_TEST_MODE) enqueueNextTestCheck()
         }
+    }
+
+    private fun enqueueNextTestCheck() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+            .setConstraints(constraints)
+            .setInitialDelay(TEST_INTERVAL_MINUTES.toLong(), TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            IMMEDIATE_WORK,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            request
+        )
     }
 
     private fun saveStatus(message: String) {
@@ -128,31 +147,46 @@ internal class UpdateCheckWorker(
         private const val UNIQUE_WORK = "photoorder_periodic_update_check"
         private const val IMMEDIATE_WORK = "photoorder_update_check_immediate"
 
+        // TEMPORARY: set FAST_TEST_MODE back to false after notification testing.
+        internal const val FAST_TEST_MODE = true
+        internal const val TEST_INTERVAL_MINUTES = 2
+
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val manager = WorkManager.getInstance(context)
 
-            // Check soon after app startup, then keep checking in the background.
-            manager.enqueueUniqueWork(
-                IMMEDIATE_WORK,
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+            if (FAST_TEST_MODE) {
+                // Replace the normal periodic schedule with a temporary 2-minute
+                // one-time chain. Android may still defer execution in Doze/HyperOS.
+                manager.cancelUniquePeriodicWork(UNIQUE_WORK)
+                manager.enqueueUniqueWork(
+                    IMMEDIATE_WORK,
+                    ExistingWorkPolicy.KEEP,
+                    OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                        .setConstraints(constraints)
+                        .setInitialDelay(TEST_INTERVAL_MINUTES.toLong(), TimeUnit.MINUTES)
+                        .build()
+                )
+            } else {
+                // Normal production schedule: immediate check + 15-minute periodic work.
+                manager.enqueueUniqueWork(
+                    IMMEDIATE_WORK,
+                    ExistingWorkPolicy.KEEP,
+                    OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                        .setConstraints(constraints)
+                        .build()
+                )
+                val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(15, TimeUnit.MINUTES)
                     .setConstraints(constraints)
                     .build()
-            )
-
-            // Android's minimum periodic interval is 15 minutes. UPDATE replaces
-            // an older 12-hour schedule already stored on the device.
-            val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(constraints)
-                .build()
-            manager.enqueueUniquePeriodicWork(
-                UNIQUE_WORK,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request
-            )
+                manager.enqueueUniquePeriodicWork(
+                    UNIQUE_WORK,
+                    ExistingPeriodicWorkPolicy.UPDATE,
+                    request
+                )
+            }
         }
     }
 }
