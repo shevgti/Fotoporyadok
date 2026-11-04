@@ -36,6 +36,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -719,12 +725,22 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
+                        val pressInteraction = remember(item.uri) { MutableInteractionSource() }
+                        val isPhotoPressed by pressInteraction.collectIsPressedAsState()
+                        val photoScale by animateFloatAsState(
+                            targetValue = if (isPhotoPressed && !item.isVideo) 1.65f else 1f,
+                            animationSpec = tween(durationMillis = 140),
+                            label = "galleryPhotoPressScale"
+                        )
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = palette.card),
-                            modifier = Modifier.clickable {
-                                selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
-                            },
+                            modifier = Modifier
+                                .zIndex(if (isPhotoPressed && !item.isVideo) 5f else 0f)
+                                .graphicsLayer { scaleX = photoScale; scaleY = photoScale }
+                                .clickable(interactionSource = pressInteraction, indication = null) {
+                                    selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
+                                },
                         ) {
                             Column {
                                 if (item.isVideo) {
