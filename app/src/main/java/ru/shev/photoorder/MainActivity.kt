@@ -729,6 +729,31 @@ private fun PhotoOrderScreen(
         Column(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(selectedPage, drawerState.isOpen, selectedViewerIndex, zoomedMainPhoto) {
+                var dragStartX = 0f
+                var dragDistance = 0f
+                var pageChanged = false
+                val edgeExclusion = 48.dp.toPx()
+                val pageSwipeThreshold = 72.dp.toPx()
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        dragStartX = offset.x
+                        dragDistance = 0f
+                        pageChanged = false
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        dragDistance += dragAmount
+                        val canSwitchPages = !drawerState.isOpen &&
+                            selectedViewerIndex == null && zoomedMainPhoto == null &&
+                            dragStartX > edgeExclusion
+                        if (canSwitchPages && !pageChanged && kotlin.math.abs(dragDistance) >= pageSwipeThreshold) {
+                            selectedPage = if (dragDistance < 0f) 1 else 0
+                            pageChanged = true
+                            change.consume()
+                        }
+                    }
+                )
+            }
             .background(palette.background.copy(alpha = 0.64f))
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
