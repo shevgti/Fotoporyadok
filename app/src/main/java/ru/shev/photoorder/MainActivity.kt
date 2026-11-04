@@ -857,15 +857,6 @@ private fun PhotoOrderScreen(
                 }
             }
         }
-        if (selectedPage != 0) {
-            Text(
-                "Фото и видео на телефоне — в удобном порядке",
-                color = palette.muted,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 2.dp)
-            )
-        }
-
         HorizontalPager(
             state = pagePagerState,
             modifier = Modifier.weight(1f),
