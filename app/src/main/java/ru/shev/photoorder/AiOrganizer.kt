@@ -1,6 +1,8 @@
 package ru.shev.photoorder
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.compose.foundation.clickable
@@ -23,6 +25,7 @@ import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 internal data class AiPhotoResult(val media: MediaItem, val labels: List<String>, val category: String)
 internal data class AiEventAlbum(val id: String, val title: String, val dateLabel: String, val photos: List<AiPhotoResult>)
@@ -82,7 +85,20 @@ internal fun buildAiEventAlbums(results: List<AiPhotoResult>): List<AiEventAlbum
     results.sortedBy { it.media.dateSeconds }.forEach { photo ->
         val last = groups.lastOrNull()
         val gap = if (last.isNullOrEmpty()) Long.MAX_VALUE else photo.media.dateSeconds - last.last().media.dateSeconds
-        if (last == null || gap > 3 * 60 * 60) groups.add(mutableListOf(photo)) else last.add(photo)
+        val meaningfulLabels = photo.labels.map { it.lowercase(Locale.ROOT) }.filterNot {
+            it in setOf("photo", "photography", "image", "outdoor", "nature", "person", "people")
+        }.toSet()
+        val sharedSubject = last?.any { previous ->
+            previous.labels.any { it.lowercase(Locale.ROOT) in meaningfulLabels }
+        } == true
+        val sharedCategory = last?.any { previous ->
+            previous.category == photo.category && photo.category !in setOf("Разное", "Не распознано")
+        } == true
+        if (last == null || gap > 3 * 60 * 60 || (!sharedSubject && !sharedCategory)) {
+            groups.add(mutableListOf(photo))
+        } else {
+            last.add(photo)
+        }
     }
     val dateFormat = SimpleDateFormat("d MMMM yyyy", Locale("ru"))
     return groups.filter { group ->
@@ -135,6 +151,7 @@ internal fun analyzePhotosWithAi(context: Context, media: List<MediaItem>, onPro
 internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
     var analyzing by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0) }
     var total by remember { mutableStateOf(0) }
@@ -142,6 +159,7 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
     var albums by remember { mutableStateOf<List<AiEventAlbum>>(emptyList()) }
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("ИИ-фотограф", fontSize = 25.sp, color = palette.text, fontWeight = FontWeight.Bold)
@@ -159,7 +177,9 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
                 scope.launch {
                     try {
                         val found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            analyzePhotosWithAi(context, media) { done, count -> progress = done; total = count }
+                            analyzePhotosWithAi(context, media) { done, count ->
+                                mainHandler.post { progress = done; total = count }
+                            }
                         }
                         results = found
                         albums = buildAiEventAlbums(found)
@@ -175,7 +195,7 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
             }
         }
         status?.let { Text(it, color = palette.muted, fontSize = 12.sp) }
-        if (results.isNotEmpty() && selectedAlbum == null) {
+        if (results.isNotEmpty() && selectedAlbum == null && selectedCategory == null) {
             Text("Умные альбомы · ${albums.size}", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             if (albums.isEmpty()) Text("Пока не найдено достаточно крупных событий. Для отдельного альбома нужно минимум три фотографии в одной съёмочной серии.", color = palette.muted, fontSize = 12.sp)
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -187,6 +207,42 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
                                 modifier = Modifier.fillMaxWidth().height(130.dp), contentScale = ContentScale.Crop)
                             Text(album.title, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Text("${album.photos.size} фотографий · ${album.dateLabel}", color = palette.muted, fontSize = 11.sp)
+                        }
+                    }
+                }
+                item {
+                    Text("Категории фотографий", color = palette.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                }
+                items(
+                    results.filter { it.category != "Не распознано" }
+                        .groupBy { it.category }.toList().sortedByDescending { it.second.size },
+                    key = { it.first }
+                ) { entry ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { selectedCategory = entry.first },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(entry.first, color = palette.text, fontWeight = FontWeight.SemiBold)
+                            Text("${entry.second.size} фото", color = palette.muted)
+                        }
+                    }
+                }
+            }
+        } else if (selectedCategory != null) {
+            val categoryPhotos = results.filter { it.category == selectedCategory }
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(selectedCategory!!, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                TextButton(onClick = { selectedCategory = null }) { Text("Назад") }
+            }
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        AsyncImage(model = photo.media.uri, contentDescription = null, modifier = Modifier.height(86.dp).weight(1f), contentScale = ContentScale.Crop)
+                        Column(Modifier.weight(1f)) {
+                            Text(photo.labels.joinToString(", ").ifBlank { "Нет дополнительных меток" }, color = palette.text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            Text(SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(photo.media.dateSeconds * 1000)), color = palette.muted, fontSize = 10.sp)
                         }
                     }
                 }

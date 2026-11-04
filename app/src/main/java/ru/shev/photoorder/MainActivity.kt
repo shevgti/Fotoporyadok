@@ -555,32 +555,9 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             )
         }
 
-        if (selectedPage == 1) {
-            SmartSortPage(
+        if (selectedPage == 1 && hasPermission) {
+            AiOrganizerPage(
                 media = media,
-                folders = sortFolders,
-                onAnalyze = {
-                    sortFolders = buildSmartSortPlan(media)
-                    sortStatus = "План готов. Проверь папки и названия."
-                },
-                onRename = { id, name ->
-                    sortFolders = sortFolders.map { if (it.id == id) it.copy(name = name) else it }
-                },
-                onConfirm = {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                        sortStatus = "Для безопасного пакетного переноса нужна версия Android 11 или новее. На этом телефоне файлы не изменены."
-                    } else {
-                        pendingSortFolders = sortFolders
-                        val uris = sortFolders.flatMap { it.items }.map { it.uri }
-                        if (uris.isEmpty()) {
-                            sortStatus = "Нет файлов для переноса."
-                        } else {
-                            val request = MediaStore.createWriteRequest(context.contentResolver, uris)
-                            sortWriteLauncher.launch(IntentSenderRequest.Builder(request).build())
-                        }
-                    }
-                },
-                status = sortStatus,
                 palette = palette,
                 modifier = Modifier.weight(1f)
             )
@@ -718,7 +695,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            listOf("⌂  Главная", "✨  Умная сортировка").forEachIndexed { index, label ->
+            listOf("⌂  Главная", "✨  ИИ-альбомы").forEachIndexed { index, label ->
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
                          .background(if (selectedPage == index) palette.primary else Color.Transparent)
