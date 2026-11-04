@@ -2,6 +2,7 @@ package ru.shev.photoorder
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Environment
@@ -162,7 +163,6 @@ class AiAlbumBackNavigationTest {
             val baseTime = System.currentTimeMillis() - 30 * 60 * 1000L
             repeat(3) { index ->
                 val name = "fp_back_test_$index.jpg"
-                val dateSeconds = (baseTime + index * 2 * 60 * 1000L) / 1000L
                 val values = ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, name)
                     put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
@@ -170,7 +170,7 @@ class AiAlbumBackNavigationTest {
                         MediaStore.Images.Media.RELATIVE_PATH,
                         Environment.DIRECTORY_PICTURES + "/FotoporyadokUiTest"
                     )
-                    put(MediaStore.Images.Media.DATE_TAKEN, dateSeconds * 1000L)
+                    put(MediaStore.Images.Media.DATE_TAKEN, baseTime + index * 2 * 60 * 1000L)
                     put(MediaStore.Images.Media.IS_PENDING, 0)
                 }
                 val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
@@ -182,20 +182,49 @@ class AiAlbumBackNavigationTest {
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
                     bitmap.recycle()
                 }
-
-                val cached = ContentValues().apply {
-                    put("uri", uri.toString())
-                    put("signature", "$dateSeconds|$name")
-                    put("labels", "beach|sea")
-                    put("category", "Природа")
-                }
-                db.insertWithOnConflict(
-                    "labels",
-                    null,
-                    cached,
-                    SQLiteDatabase.CONFLICT_REPLACE
-                )
             }
+
+            // Read back MediaStore's actual timestamps and IDs. This mirrors MainActivity's
+            // dateSeconds fallback exactly, even if a provider rounds DATE_TAKEN.
+            val projection = arrayOf(
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.DATE_ADDED,
+                MediaStore.Images.Media.DATE_TAKEN
+            )
+            resolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                "${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?",
+                arrayOf("fp_back_test_%"),
+                null
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+                val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+                val takenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(nameColumn)
+                    val taken = cursor.getLong(takenColumn)
+                    val dateSeconds = if (taken > 0L) taken / 1000L else cursor.getLong(addedColumn)
+                    val uri = ContentUris.withAppendedId(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        cursor.getLong(idColumn)
+                    )
+                    val cached = ContentValues().apply {
+                        put("uri", uri.toString())
+                        put("signature", "$dateSeconds|$name")
+                        put("labels", "beach|sea")
+                        put("category", "Природа")
+                    }
+                    db.insertWithOnConflict(
+                        "labels",
+                        null,
+                        cached,
+                        SQLiteDatabase.CONFLICT_REPLACE
+                    )
+                }
+            } ?: error("Could not query test images from MediaStore")
         }
     }
 }
