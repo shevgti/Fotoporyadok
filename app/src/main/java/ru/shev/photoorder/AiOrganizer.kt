@@ -53,7 +53,7 @@ private fun russianLabel(label: String): String {
     return when (label.lowercase(Locale.ROOT)) {
         "beach" -> "Пляж"; "ocean", "sea" -> "Море"; "lake" -> "Озеро"; "mountain" -> "Горы"
         "landscape" -> "Пейзаж"; "sky" -> "Небо"; "forest" -> "Лес"; "tree" -> "Деревья"
-        "nature" -> "Природа"; "outdoor" -> "На природе"; "scenery" -> "Пейзаж"; "travel" -> "Путешествие"; "water" -> "Вода"; "waterfall" -> "Водопад"; "flower" -> "Цветы"; "plant" -> "Растения"
+        "nature" -> "Природа"; "outdoor" -> "На природе"; "scenery" -> "Пейзаж"; "travel" -> "Путешествие"; "barbecue", "grill", "grilling" -> "Шашлыки"; "picnic" -> "Пикник"; "water" -> "Вода"; "waterfall" -> "Водопад"; "flower" -> "Цветы"; "plant" -> "Растения"
         "dog" -> "Собака"; "cat" -> "Кошка"; "pet" -> "Питомец"; "animal" -> "Животное"
         "bird" -> "Птицы"; "horse" -> "Лошадь"; "car", "automobile" -> "Автомобиль"
         "vehicle" -> "Транспорт"; "food" -> "Еда"; "cake" -> "Торт"; "fruit" -> "Фрукты"
@@ -69,52 +69,80 @@ private fun russianLabel(label: String): String {
 private fun categoryForLabels(labels: List<String>): String {
     val all = labels.map { it.lowercase(Locale.ROOT) }.toSet()
     val animalSignals = all.intersect(setOf("dog", "cat", "pet", "animal", "bird", "horse", "wildlife", "mammal", "reptile", "fish"))
-    // ML Kit may return a stray "Dog" label for a person or campsite.
-    // One animal label is not enough to make a categorical claim.
+    // People take priority over a stray animal label: a dog in the frame
+    // must not turn a group photo into an "Animals" photo.
     return when {
-        animalSignals.size >= 2 -> "Животные"
         all.any { it in setOf("screenshot", "document", "text", "poster", "paper") } -> "Документы и скриншоты"
-        all.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd") } -> "Люди"
+        all.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd", "group") } -> "Люди"
+        animalSignals.size >= 2 -> "Животные"
         all.any { it in setOf("car", "vehicle", "automobile", "truck", "motorcycle", "bicycle", "airplane", "train", "boat") } -> "Транспорт"
-        all.any { it in setOf("food", "dish", "cuisine", "fruit", "vegetable", "dessert", "cake", "meal", "drink") } -> "Еда"
+        all.any { it in setOf("food", "dish", "cuisine", "fruit", "vegetable", "dessert", "cake", "meal", "drink", "barbecue", "grill", "picnic") } -> "Еда"
         all.any { it in setOf("building", "architecture", "house", "church", "tower", "bridge", "city", "skyscraper", "monument") } -> "Город и архитектура"
-        all.any { it in setOf("beach", "ocean", "sea", "lake", "mountain", "landscape", "forest", "tree", "waterfall", "flower", "plant") } -> "Природа и путешествия"
+        all.any { it in setOf("travel", "tourism", "vacation", "sightseeing", "landmark") } -> "Путешествия"
+        all.any { it in setOf("beach", "ocean", "sea", "lake", "mountain", "landscape", "forest", "tree", "waterfall", "flower", "plant", "nature", "outdoor", "park") } -> "Природа"
         else -> "Разное"
+    }
+}
+
+private val eventContextLabels = setOf(
+    "outdoor", "park", "grass", "tree", "forest", "nature", "landscape", "camping",
+    "picnic", "barbecue", "grill", "grilling", "food", "meal", "people", "person",
+    "crowd", "group", "dog", "pet", "family", "friend"
+)
+
+private fun eventTitleFor(group: List<AiPhotoResult>): String {
+    val labels = group.flatMap { it.labels }.map { it.lowercase(Locale.ROOT) }.toSet()
+    val hasPeople = labels.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd", "group", "family", "friend") }
+    val hasOutdoor = labels.any { it in setOf("outdoor", "park", "grass", "tree", "forest", "nature", "landscape", "camping") }
+    val hasFood = labels.any { it in setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "grilling", "picnic", "cake", "drink") }
+    return when {
+        labels.any { it in setOf("barbecue", "grill", "grilling") } -> "Шашлыки и отдых"
+        labels.contains("picnic") -> "Пикник на природе"
+        hasPeople && hasOutdoor -> "Встреча на природе"
+        hasPeople -> "Встреча с друзьями"
+        hasFood -> "Угощение и застолье"
+        hasOutdoor -> "Прогулка на природе"
+        else -> group.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key
+            ?.takeIf { it !in setOf("Разное", "Не распознано", "Животные", "Природа и путешествия") }
+            ?: "Фотособытие"
     }
 }
 
 internal fun buildAiEventAlbums(results: List<AiPhotoResult>): List<AiEventAlbum> {
     if (results.isEmpty()) return emptyList()
+    val dayFormat = SimpleDateFormat("yyyyMMdd", Locale.ROOT)
+    val dateFormat = SimpleDateFormat("d MMMM yyyy", Locale("ru"))
     val groups = mutableListOf<MutableList<AiPhotoResult>>()
+
+    // Event grouping is based primarily on a same-day shooting session.
+    // Labels provide a secondary scene/context bridge, but category changes
+    // (people -> dog -> food -> park) no longer split one real-life event.
     results.sortedBy { it.media.dateSeconds }.forEach { photo ->
-        val last = groups.lastOrNull()
-        val gap = if (last.isNullOrEmpty()) Long.MAX_VALUE else photo.media.dateSeconds - last.last().media.dateSeconds
-        val meaningfulLabels = photo.labels.map { it.lowercase(Locale.ROOT) }.filterNot {
-            it in setOf("photo", "photography", "image", "outdoor", "nature", "person", "people")
-        }.toSet()
-        val sharedSubject = last?.any { previous ->
-            previous.labels.any { it.lowercase(Locale.ROOT) in meaningfulLabels }
-        } == true
-        val sharedCategory = last?.any { previous ->
-            previous.category == photo.category && photo.category !in setOf("Разное", "Не распознано")
-        } == true
-        if (last == null || gap > 3 * 60 * 60 || (!sharedSubject && !sharedCategory)) {
+        val current = groups.lastOrNull()
+        val previous = current?.lastOrNull()
+        if (previous == null) {
             groups.add(mutableListOf(photo))
         } else {
-            last.add(photo)
+            val sameDay = dayFormat.format(Date(previous.media.dateSeconds * 1000)) ==
+                dayFormat.format(Date(photo.media.dateSeconds * 1000))
+            val gapSeconds = (photo.media.dateSeconds - previous.media.dateSeconds).coerceAtLeast(0L)
+            val currentContext = current.flatMap { it.labels }
+                .map { it.lowercase(Locale.ROOT) }.toSet().intersect(eventContextLabels)
+            val photoContext = photo.labels.map { it.lowercase(Locale.ROOT) }.toSet()
+                .intersect(eventContextLabels)
+            val sharedSceneContext = currentContext.intersect(photoContext).isNotEmpty()
+            val belongsToSameSession = gapSeconds <= 4 * 60 * 60L ||
+                (gapSeconds <= 8 * 60 * 60L && sharedSceneContext)
+
+            if (sameDay && belongsToSameSession) current.add(photo)
+            else groups.add(mutableListOf(photo))
         }
     }
-    val dateFormat = SimpleDateFormat("d MMMM yyyy", Locale("ru"))
-    return groups.filter { group ->
-        if (group.size < 3) return@filter false
-        val categoryCounts = group.filter { it.category != "Не распознано" && it.category != "Разное" }.groupingBy { it.category }.eachCount()
-        val repeatedLabels = group.flatMap { it.labels }.groupingBy { it }.eachCount().values.maxOrNull() ?: 0
-        (categoryCounts.values.maxOrNull() ?: 0) >= 2 || repeatedLabels >= 2
-    }.map { group ->
-        val category = group.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key ?: "Фотографии"
-        val subject = category.takeIf { it != "Разное" && it != "Не распознано" } ?: "Фотографии"
+
+    return groups.filter { it.size >= 3 }.map { group ->
         val date = dateFormat.format(Date(group.first().media.dateSeconds * 1000))
-        AiEventAlbum(group.first().media.uri.toString(), "$subject · $date", date, group)
+        val title = eventTitleFor(group)
+        AiEventAlbum(group.first().media.uri.toString(), "$title · $date", date, group)
     }.sortedByDescending { it.photos.maxOfOrNull { photo -> photo.media.dateSeconds } ?: 0L }
 }
 
