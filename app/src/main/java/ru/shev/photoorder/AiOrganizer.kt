@@ -433,13 +433,13 @@ internal fun AiOrganizerPage(
                                 }
                             )
                         },
-                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         AsyncImage(
                             model = photo.media.uri,
                             contentDescription = photo.media.name,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(3.dp),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                             contentScale = ContentScale.Fit
                         )
                     }
