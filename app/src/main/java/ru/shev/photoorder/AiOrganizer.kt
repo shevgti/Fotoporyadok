@@ -91,20 +91,31 @@ private val eventContextLabels = setOf(
 )
 
 private fun eventTitleFor(group: List<AiPhotoResult>): String {
-    val labels = group.flatMap { it.labels }.map { it.lowercase(Locale.ROOT) }.toSet()
-    val hasPeople = labels.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd", "group", "family", "friend") }
-    val hasOutdoor = labels.any { it in setOf("outdoor", "park", "grass", "tree", "forest", "nature", "landscape", "camping") }
-    val hasFood = labels.any { it in setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "grilling", "picnic", "cake", "drink") }
-    return when {
-        labels.any { it in setOf("barbecue", "grill", "grilling") } -> "Шашлыки и отдых"
-        labels.contains("picnic") -> "Пикник на природе"
-        hasPeople && hasOutdoor -> "Встреча на природе"
-        hasPeople -> "Встреча с друзьями"
-        hasFood -> "Угощение и застолье"
-        hasOutdoor -> "Прогулка на природе"
-        else -> group.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key
-            ?.takeIf { it !in setOf("Разное", "Не распознано", "Животные", "Природа и путешествия") }
-            ?: "Фотособытие"
+    // Count a theme once per photo, then compare its share across the whole album.
+    // This avoids letting one incidental label determine the title.
+    val categoryCounts = group.groupingBy { it.category }.eachCount()
+        .filterKeys { it !in setOf("Разное", "Не распознано") }
+    val dominant = categoryCounts.maxByOrNull { it.value } ?: return "Фотографии"
+    val share = dominant.value.toFloat() / group.size.coerceAtLeast(1)
+    if (share < 0.50f) return "Событие · смешанная серия"
+
+    val labelsByPhoto = group.flatMap { photo ->
+        photo.labels.map { it.lowercase(Locale.ROOT) }.distinct()
+    }.groupingBy { it }.eachCount()
+    val hasSea = labelsByPhoto.keys.any { it in setOf("beach", "sea", "ocean", "coast", "seaside") }
+    val hasPeople = labelsByPhoto.keys.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "family", "friend", "group") }
+    val hasFood = labelsByPhoto.keys.any { it in setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "picnic") }
+
+    return when (dominant.key) {
+        "Люди" -> if (hasFood) "Семейный праздник" else "Встреча с близкими"
+        "Природа" -> if (hasSea) "Отдых на море" else "Прогулка на природе"
+        "Город и архитектура" -> "Городская прогулка"
+        "Путешествия" -> "Путешествие"
+        "Еда" -> "Угощение и застолье"
+        "Животные" -> "Животные"
+        "Транспорт" -> "Поездки и транспорт"
+        "Документы и скриншоты" -> "Документы и скриншоты"
+        else -> "Фотографии"
     }
 }
 
