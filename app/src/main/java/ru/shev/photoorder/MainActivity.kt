@@ -413,14 +413,14 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 AsyncImage(
-                                    model = theme.wallpaperUrl,
+                                    model = theme.wallpaperUrl.replace("!d", "!s1"),
                                     contentDescription = "Фото темы ${theme.name}",
-                                    modifier = Modifier.fillMaxWidth().height(42.dp).clip(RoundedCornerShape(7.dp)),
+                                    modifier = Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(7.dp)),
                                     contentScale = ContentScale.Crop
                                 )
-                                Text(theme.name, color = theme.text, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(theme.name, color = theme.text, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(theme.primary))
-                                if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                                if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 11.sp, fontWeight = FontWeight.Black)
                             }
                         }
                     }
