@@ -646,7 +646,7 @@ private fun PhotoOrderScreen(
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 AsyncImage(
-                                    model = themeWallpaperRes(theme.id),
+                                    model = theme.wallpaperUrl,
                                     contentDescription = "Фото темы ${theme.name}",
                                     modifier = Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(7.dp)),
                                     contentScale = ContentScale.Crop
@@ -720,7 +720,7 @@ private fun PhotoOrderScreen(
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
         AsyncImage(
-            model = themeWallpaperRes(themeId),
+            model = appThemes.firstOrNull { it.id == themeId }?.wallpaperUrl ?: themeWallpaperRes(themeId),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -728,7 +728,7 @@ private fun PhotoOrderScreen(
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent, palette.background.copy(alpha = 0.52f))
+                    listOf(Color.Black.copy(alpha = 0.10f), Color.Transparent, palette.background.copy(alpha = 0.22f))
                 )
             )
         )
@@ -762,7 +762,7 @@ private fun PhotoOrderScreen(
                     }
                 }
             }
-            .background(palette.background.copy(alpha = 0.64f))
+            .background(palette.background.copy(alpha = 0.28f))
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
