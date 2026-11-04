@@ -12,8 +12,8 @@ android {
         applicationId = "ru.shev.photoorder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "2.4"
+        versionCode = 25
+        versionName = "2.5"
     }
 
     signingConfigs {
@@ -50,6 +50,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
+    // Bundled on-device model: available immediately and does not upload photos.
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 }
 
 kotlin {
