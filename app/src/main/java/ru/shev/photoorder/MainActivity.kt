@@ -533,7 +533,12 @@ private fun PhotoOrderScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
-                        .clickable { notificationsEnabled = appNotificationsEnabled(context); showNotificationSettings = !showNotificationSettings }
+                        .clickable {
+                            notificationsEnabled = appNotificationsEnabled(context)
+                            val expand = !showNotificationSettings
+                            showNotificationSettings = expand
+                            if (expand) { showUpdateSettings = false; showThemePicker = false }
+                        }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
                     Text((if (notificationsEnabled && appNotificationPreference) "🔔  Уведомления включены" else "🔕  Уведомления выключены") +
@@ -574,7 +579,11 @@ private fun PhotoOrderScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).shadow(4.dp, RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp)).background(palette.primary)
-                    .clickable { showUpdateSettings = !showUpdateSettings }.padding(horizontal = 14.dp, vertical = 13.dp)) {
+                    .clickable {
+                        val expand = !showUpdateSettings
+                        showUpdateSettings = expand
+                        if (expand) { showNotificationSettings = false; showThemePicker = false }
+                    }.padding(horizontal = 14.dp, vertical = 13.dp)) {
                     Text(if (showUpdateSettings) "↻  Обновления ▲" else "↻  Обновления ▼",
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
@@ -615,7 +624,11 @@ private fun PhotoOrderScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
-                        .clickable { showThemePicker = !showThemePicker }
+                        .clickable {
+                            val expand = !showThemePicker
+                            showThemePicker = expand
+                            if (expand) { showNotificationSettings = false; showUpdateSettings = false }
+                        }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
                 ) {
                     Text(if (showThemePicker) "🎨  Скрыть оформление ▲" else "🎨  Оформление ▼", color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
