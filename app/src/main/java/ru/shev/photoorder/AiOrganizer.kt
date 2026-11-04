@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +35,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 internal data class AiPhotoResult(val media: MediaItem, val labels: List<String>, val category: String)
 internal data class AiEventAlbum(val id: String, val title: String, val dateLabel: String, val photos: List<AiPhotoResult>)
@@ -241,6 +246,7 @@ internal fun AiOrganizerPage(
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var zoomedPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
+    var previewHeld by remember { mutableStateOf(false) }
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -385,15 +391,25 @@ internal fun AiOrganizerPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
-                    val interaction = remember(photo.media.uri) { MutableInteractionSource() }
-                    val pressed by interaction.collectIsPressedAsState()
-                    LaunchedEffect(pressed) {
-                        if (pressed) zoomedPhoto = photo
-                        else if (zoomedPhoto?.media?.uri == photo.media.uri) zoomedPhoto = null
-                    }
                     Card(
-                        modifier = Modifier.fillMaxWidth()
-                            .clickable(interactionSource = interaction, indication = null) { },
+                        modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
+                            detectTapGestures(
+                                onLongPress = { 
+                                    zoomedPhoto = photo
+                                    previewHeld = true
+                                },
+                                onPress = {
+                                    tryAwaitRelease()
+                                    if (zoomedPhoto?.media?.uri == photo.media.uri) {
+                                        previewHeld = false
+                                        delay(240)
+                                        if (!previewHeld && zoomedPhoto?.media?.uri == photo.media.uri) {
+                                            zoomedPhoto = null
+                                        }
+                                    }
+                                }
+                            )
+                        },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -429,15 +445,25 @@ internal fun AiOrganizerPage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(album.photos, key = { it.media.uri.toString() }) { photo ->
-                    val interaction = remember(photo.media.uri) { MutableInteractionSource() }
-                    val pressed by interaction.collectIsPressedAsState()
-                    LaunchedEffect(pressed) {
-                        if (pressed) zoomedPhoto = photo
-                        else if (zoomedPhoto?.media?.uri == photo.media.uri) zoomedPhoto = null
-                    }
                     Card(
-                        modifier = Modifier.fillMaxWidth()
-                            .clickable(interactionSource = interaction, indication = null) { },
+                        modifier = Modifier.fillMaxWidth().pointerInput(photo.media.uri) {
+                            detectTapGestures(
+                                onLongPress = { 
+                                    zoomedPhoto = photo
+                                    previewHeld = true
+                                },
+                                onPress = {
+                                    tryAwaitRelease()
+                                    if (zoomedPhoto?.media?.uri == photo.media.uri) {
+                                        previewHeld = false
+                                        delay(240)
+                                        if (!previewHeld && zoomedPhoto?.media?.uri == photo.media.uri) {
+                                            zoomedPhoto = null
+                                        }
+                                    }
+                                }
+                            )
+                        },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -456,21 +482,24 @@ internal fun AiOrganizerPage(
     }
 
     zoomedPhoto?.let { photo ->
+        val previewScale by animateFloatAsState(
+            targetValue = if (previewHeld) 1.42f else 0.82f,
+            animationSpec = tween(durationMillis = 240),
+            label = "photoPreviewScale"
+        )
         BoxWithConstraints(
-            modifier = Modifier.fillMaxSize()
-                // Keep the area around the preview transparent instead of
-                // adding a grey/white-looking backdrop behind the photo.
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { zoomedPhoto = null },
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
             AsyncImage(
                 model = photo.media.uri,
                 contentDescription = photo.media.name,
-                modifier = Modifier.fillMaxWidth(0.97f)
-                    .height(maxHeight * 0.70f),
+                modifier = Modifier.fillMaxWidth(0.99f)
+                    .height(maxHeight * 0.84f)
+                    .graphicsLayer {
+                        scaleX = previewScale
+                        scaleY = previewScale
+                    },
                 contentScale = ContentScale.Fit
             )
         }
