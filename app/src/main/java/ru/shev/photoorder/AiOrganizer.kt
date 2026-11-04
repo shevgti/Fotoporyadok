@@ -17,10 +17,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -337,13 +339,23 @@ internal fun AiOrganizerPage(
                             userScrollEnabled = false
                         ) {
                             items(albums, key = { it.id }) { album ->
+                                val albumCardShape = RoundedCornerShape(12.dp)
                                 Card(
-                                    modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
+                                    modifier = Modifier.fillMaxWidth()
+                                        .shadow(7.dp, albumCardShape)
+                                        .clickable { selectedAlbum = album },
                                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = albumCardShape,
                                     border = androidx.compose.foundation.BorderStroke(
-                                        0.8.dp,
-                                        palette.muted.copy(alpha = 0.55f)
+                                        2.dp,
+                                        Brush.linearGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.96f),
+                                                palette.accent.copy(alpha = 0.98f),
+                                                palette.primary.copy(alpha = 0.96f),
+                                                palette.secondary.copy(alpha = 0.90f)
+                                            )
+                                        )
                                     )
                                 ) {
                                     Column(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
