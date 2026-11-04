@@ -354,10 +354,13 @@ internal fun AiOrganizerPage(
                 }
             }
         } else if (selectedCategory != null) {
-            val categoryPhotos = results.filter { it.category == selectedCategory }
+            // Capture the selected value for this composition. Lazy grid item
+            // providers may be evaluated after Back changes the state.
+            val category = selectedCategory ?: return@Column
+            val categoryPhotos = results.filter { it.category == category }
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    selectedCategory!!,
+                    category,
                     modifier = Modifier.weight(1f),
                     color = palette.text,
                     fontWeight = FontWeight.Bold,
@@ -401,9 +404,12 @@ internal fun AiOrganizerPage(
                 }
             }
         } else if (selectedAlbum != null) {
+            // Keep a stable album reference inside the lazy item-provider
+            // closure; selectedAlbum is cleared immediately by BackHandler.
+            val album = selectedAlbum ?: return@Column
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    selectedAlbum!!.title,
+                    album.title,
                     modifier = Modifier.weight(1f),
                     color = palette.text,
                     fontWeight = FontWeight.Bold,
@@ -419,7 +425,7 @@ internal fun AiOrganizerPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
+                items(album.photos, key = { it.media.uri.toString() }) { photo ->
                     Card(
                         modifier = run {
                             val interaction = remember(photo.media.uri) { MutableInteractionSource() }

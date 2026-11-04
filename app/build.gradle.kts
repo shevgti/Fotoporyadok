@@ -12,8 +12,9 @@ android {
         applicationId = "ru.shev.photoorder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "2.11"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 32
+        versionName = "2.12"
     }
 
     signingConfigs {
@@ -52,6 +53,11 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.5.1")
     // Bundled on-device model: available immediately and does not upload photos.
     implementation("com.google.mlkit:image-labeling:17.0.9")
+
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
 
 kotlin {
