@@ -453,6 +453,15 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                         }
                         Text("При обнаружении новой версии приложение автоматически скачает APK, когда оно открыто. Перед установкой Android всё равно попросит подтверждение.",
                             color = palette.muted, fontSize = 10.sp)
+                        val workerPrefs = context.getSharedPreferences("photoorder_update_worker", Context.MODE_PRIVATE)
+                        val lastWorkerStatus = workerPrefs.getString("last_check_status", "Фоновая проверка ещё не запускалась")
+                            ?: "Фоновая проверка ещё не запускалась"
+                        val lastWorkerTime = workerPrefs.getLong("last_check_timestamp", 0L)
+                        val lastWorkerTimeText = if (lastWorkerTime > 0L)
+                            SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(lastWorkerTime))
+                        else "нет данных"
+                        Text("Диагностика фоновой проверки:\n$lastWorkerStatus\nВремя: $lastWorkerTimeText",
+                            color = palette.muted, fontSize = 10.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
