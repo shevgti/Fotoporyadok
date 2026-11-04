@@ -18,6 +18,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Bundle
+import android.view.View
 import android.provider.MediaStore
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -102,10 +103,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.paint
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -493,6 +497,7 @@ private fun PhotoOrderScreen(
 
     ModalNavigationDrawer(
         gesturesEnabled = false,
+        scrimColor = Color.Black.copy(alpha = 0.48f),
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -950,8 +955,15 @@ private fun PhotoOrderScreen(
                                 }
                                 if (gridColumnCount <= 2) {
                                     // Text sits directly over the photo: no strip, panel or opaque background.
-                                    val nameSize = if (maxWidth < 120.dp) 8.sp else 9.sp
-                                    val dateSize = if (maxWidth < 120.dp) 7.sp else 8.sp
+                                    val nameSize = if (maxWidth < 120.dp) 10.sp else 12.sp
+                                    val dateSize = if (maxWidth < 120.dp) 9.sp else 10.sp
+                                    val photoCaptionStyle = TextStyle(
+                                        shadow = Shadow(
+                                            color = Color.Black.copy(alpha = 0.96f),
+                                            offset = Offset(1.2f, 1.2f),
+                                            blurRadius = 3.5f
+                                        )
+                                    )
                                     Column(
                                         modifier = Modifier.align(Alignment.BottomStart)
                                             .fillMaxWidth()
@@ -962,16 +974,18 @@ private fun PhotoOrderScreen(
                                             item.name,
                                             maxLines = 1,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = palette.text,
+                                            color = Color.White,
                                             fontSize = nameSize,
                                             lineHeight = nameSize,
+                                            style = photoCaptionStyle,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
                                             formatDate(item.dateSeconds),
-                                            color = palette.text,
+                                            color = Color.White,
                                             fontSize = dateSize,
                                             lineHeight = dateSize,
+                                            style = photoCaptionStyle,
                                             maxLines = 1
                                         )
                                     }
@@ -1165,6 +1179,7 @@ private fun FullscreenMediaViewer(
                     )
                 }
         ) {
+            var playerControlsVisible by remember(item.uri) { mutableStateOf(false) }
             if (item.isVideo) {
                 val player = remember(item.uri) {
                     ExoPlayer.Builder(context).build().apply {
@@ -1181,6 +1196,9 @@ private fun FullscreenMediaViewer(
                         PlayerView(viewContext).apply {
                             this.player = player
                             useController = true
+                            setControllerVisibilityListener { visibility ->
+                                playerControlsVisible = visibility == View.VISIBLE
+                            }
                         }
                     },
                     update = { it.player = player },
@@ -1203,46 +1221,30 @@ private fun FullscreenMediaViewer(
             ) {
                 TextButton(onClick = onClose) { Text("✕ Закрыть", color = Color.White) }
                 Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
-                if (item.isVideo) {
-                    Row(
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF303030))
-                            .padding(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = {
-                                isLandscape = false
-                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                            },
-                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                "↕ Вертикально",
-                                color = if (!isLandscape) Color(0xFF8FE3FF) else Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = if (!isLandscape) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1
-                            )
-                        }
-                        TextButton(
-                            onClick = {
-                                isLandscape = true
-                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                            },
-                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                "↔ Горизонтально",
-                                color = if (isLandscape) Color(0xFF8FE3FF) else Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = if (isLandscape) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
                 Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
+            }
+            if (item.isVideo && playerControlsVisible) {
+                IconButton(
+                    onClick = {
+                        isLandscape = !isLandscape
+                        activity?.requestedOrientation = if (isLandscape) {
+                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(end = 18.dp, bottom = 76.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xCC202020))
+                ) {
+                    Text(
+                        "⛶",
+                        color = Color.White,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             if (!item.isVideo) {
                 Text(
@@ -1511,7 +1513,7 @@ private fun VideoThumbnail(item: MediaItem, palette: AppTheme) {
             )
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("▶", color = palette.accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                Text("▶", color = palette.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
         Box(
