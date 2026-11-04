@@ -389,12 +389,12 @@ internal fun AiOrganizerPage(
                             val interaction = remember(photo.media.uri) { MutableInteractionSource() }
                             val pressed by interaction.collectIsPressedAsState()
                             val scale by animateFloatAsState(
-                                targetValue = if (pressed) 1.07f else 1f,
+                                targetValue = if (pressed) 1.65f else 1f,
                                 animationSpec = tween(durationMillis = 130),
                                 label = "photoPressScale"
                             )
                             Modifier.fillMaxWidth()
-                                .zIndex(if (pressed) 1f else 0f)
+                                .zIndex(if (pressed) 5f else 0f)
                                 .graphicsLayer { scaleX = scale; scaleY = scale }
                                 .clickable(interactionSource = interaction, indication = null) { }
                         },
@@ -438,12 +438,12 @@ internal fun AiOrganizerPage(
                             val interaction = remember(photo.media.uri) { MutableInteractionSource() }
                             val pressed by interaction.collectIsPressedAsState()
                             val scale by animateFloatAsState(
-                                targetValue = if (pressed) 1.07f else 1f,
+                                targetValue = if (pressed) 1.65f else 1f,
                                 animationSpec = tween(durationMillis = 130),
                                 label = "photoPressScale"
                             )
                             Modifier.fillMaxWidth()
-                                .zIndex(if (pressed) 1f else 0f)
+                                .zIndex(if (pressed) 5f else 0f)
                                 .graphicsLayer { scaleX = scale; scaleY = scale }
                                 .clickable(interactionSource = interaction, indication = null) { }
                         },
