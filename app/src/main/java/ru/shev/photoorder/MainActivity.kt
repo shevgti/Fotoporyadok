@@ -7,10 +7,15 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.database.ContentObserver
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.compose.ui.viewinterop.AndroidView
@@ -115,11 +120,9 @@ internal data class MediaItem(
     val albumName: String
 )
 
-private data class AlbumInfo(val id: String, val name: String, val count: Int)
-
 private data class AppNotificationRecord(val id: Long, val title: String, val message: String, val time: Long, val type: String, val read: Boolean)
 
-private enum class MediaSort { NEWEST, OLDEST, NAME }
+private enum class MediaSort { NEWEST, OLDEST }
 
 internal data class AppTheme(
     val id: Int, val name: String,
@@ -227,10 +230,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
-    var search by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
-    var selectedAlbumId by remember { mutableStateOf<String?>(null) }
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
@@ -257,7 +258,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
                         1002
                     )
-                    showUpdateDialog = true
                 } else if (latest == null) {
                     updateInfo = null
                 }
@@ -274,6 +274,18 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         hasPermission = hasMediaPermission(context)
+    }
+
+    // Автоматически перечитываем медиатеку, когда Android сообщает об изменениях.
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                refreshKey++
+            }
+        }
+        val mediaUri = MediaStore.Files.getContentUri("external")
+        context.contentResolver.registerContentObserver(mediaUri, true, observer)
+        onDispose { context.contentResolver.unregisterContentObserver(observer) }
     }
 
     LaunchedEffect(drawerState.isOpen) {
@@ -315,23 +327,15 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         }
     }
 
-    val albums = remember(media) {
-        media.groupBy { it.albumId }.map { (id, items) ->
-            AlbumInfo(id, items.firstOrNull()?.albumName?.takeIf { it.isNotBlank() } ?: "Без альбома", items.size)
-        }.sortedBy { it.name.lowercase(Locale.ROOT) }
-    }
-    val tabMediaBase = when (selectedTab) {
+    val tabMedia = when (selectedTab) {
         1 -> media.filter { !it.isVideo }
         2 -> media.filter { it.isVideo }
         else -> media
     }
-    val tabMedia = if (selectedAlbumId == null) tabMediaBase else tabMediaBase.filter { it.albumId == selectedAlbumId }
-    val visibleMedia = remember(tabMedia, search, sort) {
-        val filtered = tabMedia.filter { it.name.contains(search.trim(), ignoreCase = true) }
+    val visibleMedia = remember(tabMedia, sort) {
         when (sort) {
-            MediaSort.NEWEST -> filtered.sortedByDescending { it.dateSeconds }
-            MediaSort.OLDEST -> filtered.sortedBy { it.dateSeconds }
-            MediaSort.NAME -> filtered.sortedBy { it.name.lowercase(Locale.ROOT) }
+            MediaSort.NEWEST -> tabMedia.sortedByDescending { it.dateSeconds }
+            MediaSort.OLDEST -> tabMedia.sortedBy { it.dateSeconds }
         }
     }
 
@@ -526,63 +530,18 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     Text("ФОТО И ВИДЕО", fontSize = 10.sp, color = palette.muted, fontWeight = FontWeight.Medium)
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val hasNewVersion = updateInfo != null
+            if (updateInfo != null) {
                 TextButton(
-                    onClick = {
-                        if (hasNewVersion) {
-                            showUpdateDialog = true
-                        } else {
-                            scope.launch {
-                                checkingUpdate = true
-                                updateMessage = null
-                                try {
-                                    updateInfo = AppUpdater.check(BuildConfig.VERSION_CODE)
-                                    if (updateInfo == null) updateMessage = "У тебя уже установлена последняя версия."
-                                    else showUpdateDialog = true
-                                } catch (error: Exception) {
-                                    updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
-                                } finally { checkingUpdate = false }
-                            }
-                        }
-                    },
-                    enabled = !checkingUpdate && !downloadingUpdate,
-                    contentPadding = PaddingValues(0.dp)
+                    onClick = { showUpdateDialog = true },
+                    enabled = !downloadingUpdate,
+                    contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.width(150.dp).height(48.dp)
-                            .shadow(if (hasNewVersion) 7.dp else 4.dp, RoundedCornerShape(13.dp))
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    if (hasNewVersion) listOf(Color(0xFF55D982), Color(0xFF159B50))
-                                    else listOf(palette.surface, palette.card)
-                                )
-                            )
-                            .border(1.dp, if (hasNewVersion) Color.White.copy(alpha = 0.55f) else palette.accent.copy(alpha = 0.22f), RoundedCornerShape(13.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("Обновление", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (hasNewVersion) Color.White else palette.text)
-                            Text("v${BuildConfig.VERSION_NAME}", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = if (hasNewVersion) Color.White.copy(alpha = 0.9f) else palette.accent)
-                        }
-                        Text(
-                            when {
-                                checkingUpdate -> "Проверяем новую версию…"
-                                hasNewVersion -> "Доступна новая версия ${updateInfo?.versionName}"
-                                else -> "Установлена последняя версия"
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            fontSize = 9.sp, maxLines = 1, softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = if (hasNewVersion) FontWeight.Bold else FontWeight.Medium,
-                            color = if (hasNewVersion) Color.White else palette.muted
-                        )
-                    }
-                }
-                TextButton(onClick = { refreshKey++ }, enabled = hasPermission && !loading) {
-                    Text("↻", fontSize = 22.sp, color = palette.accent)
+                    Text(
+                        "● ${updateInfo?.versionName}",
+                        color = Color(0xFF159B50),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
         }
@@ -675,38 +634,15 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 1.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = { selectedAlbumId = null }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                    Text(if (selectedAlbumId == null) "✓ Все альбомы" else "Все альбомы", color = if (selectedAlbumId == null) palette.accent else palette.muted, fontSize = 11.sp)
-                }
-                albums.forEach { album ->
-                    TextButton(onClick = { selectedAlbumId = album.id }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Text(if (selectedAlbumId == album.id) "✓ ${album.name} (${album.count})" else "${album.name} (${album.count})", color = if (selectedAlbumId == album.id) palette.accent else palette.muted, fontSize = 11.sp, maxLines = 1)
-                    }
-                }
-            }
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(50.dp),
-                singleLine = true,
-                label = { Text("Поиск по названию") }
-            )
-            Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 1.dp, bottom = 1.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 SortButton("Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
                 SortButton("Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
-                SortButton("По имени", sort == MediaSort.NAME, palette) { sort = MediaSort.NAME }
             }
             Text(
                 when {
                     loading -> "Обновляем медиатеку…"
-                    search.isNotBlank() -> "Найдено: ${visibleMedia.size}"
                     else -> "Показано: ${visibleMedia.size}"
                 },
                 color = palette.muted,
@@ -721,7 +657,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 ) {
                     Text(
                         if (loading) "Загружаем…"
-                        else if (search.isNotBlank()) "Ничего не найдено. Попробуйте другое название."
                         else "В этой категории пока нет файлов."
                     )
                 }
@@ -950,6 +885,18 @@ private fun FullscreenMediaViewer(
         ) {
             if (item.isVideo) {
                 val context = LocalContext.current
+                val activity = context as? Activity
+                val previousOrientation = remember(activity) {
+                    activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+                var isLandscape by remember(item.uri) {
+                    mutableStateOf(context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+                }
+                DisposableEffect(activity) {
+                    onDispose {
+                        activity?.requestedOrientation = previousOrientation
+                    }
+                }
                 val player = remember(item.uri) {
                     ExoPlayer.Builder(context).build().apply {
                         setMediaItem(PlayerMediaItem.fromUri(item.uri))
@@ -987,6 +934,19 @@ private fun FullscreenMediaViewer(
             ) {
                 TextButton(onClick = onClose) { Text("✕ Закрыть", color = Color.White) }
                 Text(item.name, color = Color.White, maxLines = 1, modifier = Modifier.weight(1f))
+                TextButton(
+                    onClick = {
+                        isLandscape = !isLandscape
+                        activity?.requestedOrientation = if (isLandscape) {
+                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        }
+                    },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                ) {
+                    Text(if (isLandscape) "↕ Вертикально" else "↔ Горизонтально", color = Color.White, fontSize = 10.sp)
+                }
                 Text("${currentIndex + 1}/${media.size}", color = Color(0xFFBDB3FF), fontSize = 12.sp)
             }
             if (!item.isVideo) {
