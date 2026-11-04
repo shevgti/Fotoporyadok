@@ -331,7 +331,7 @@ internal fun AiOrganizerPage(
                     item {
                         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                             columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                            modifier = Modifier.fillMaxWidth().height((((albums.size + 1) / 2) * 184).dp),
+                            modifier = Modifier.fillMaxWidth().height((((albums.size + 1) / 2) * 170).dp),
                             verticalArrangement = Arrangement.spacedBy(9.dp),
                             horizontalArrangement = Arrangement.spacedBy(9.dp),
                             userScrollEnabled = false
@@ -339,10 +339,10 @@ internal fun AiOrganizerPage(
                             items(albums, key = { it.id }) { album ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
-                                    colors = CardDefaults.cardColors(containerColor = palette.card),
-                                    shape = RoundedCornerShape(16.dp)
+                                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Column(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                                             columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
                                             modifier = Modifier.fillMaxWidth().height(104.dp),
@@ -363,14 +363,14 @@ internal fun AiOrganizerPage(
                                             album.title,
                                             color = palette.text,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            fontSize = 11.sp,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
                                         Text(
                                             "${album.photos.size} фото · ${album.dateLabel}",
                                             color = palette.muted,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.sp,
                                             maxLines = 1,
                                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                         )
