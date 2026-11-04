@@ -64,6 +64,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -307,6 +308,8 @@ private fun PhotoOrderScreen(
     var sort by remember { mutableStateOf(MediaSort.NEWEST) }
     var selectedTab by remember { mutableStateOf(0) }
     var selectedViewerIndex by remember { mutableStateOf<Int?>(null) }
+    var viewerMedia by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
+    var gridCellMinWidth by remember { mutableStateOf(140f) }
     var zoomedMainPhoto by remember { mutableStateOf<MediaItem?>(null) }
     var mainPreviewHeld by remember { mutableStateOf(false) }
     val mainPreviewProgress by animateFloatAsState(
@@ -475,6 +478,12 @@ private fun PhotoOrderScreen(
         when (sort) {
             MediaSort.NEWEST -> tabMedia.sortedByDescending { it.dateSeconds }
             MediaSort.OLDEST -> tabMedia.sortedBy { it.dateSeconds }
+        }
+    }
+    val allSortedMedia = remember(media, sort) {
+        when (sort) {
+            MediaSort.NEWEST -> media.sortedByDescending { it.dateSeconds }
+            MediaSort.OLDEST -> media.sortedBy { it.dateSeconds }
         }
     }
 
@@ -749,7 +758,11 @@ private fun PhotoOrderScreen(
                 media = media,
                 palette = palette,
                 modifier = Modifier.weight(1f),
-                onExit = { selectedPage = 0 }
+                onExit = { selectedPage = 0 },
+                onOpenMedia = { selected ->
+                    viewerMedia = allSortedMedia
+                    selectedViewerIndex = allSortedMedia.indexOfFirst { it.uri == selected.uri }.takeIf { it >= 0 }
+                }
             )
         } else if (!hasPermission) {
             Card(
@@ -830,8 +843,12 @@ private fun PhotoOrderScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
-                    modifier = Modifier.weight(1f),
+                    columns = GridCells.Adaptive(gridCellMinWidth.dp),
+                    modifier = Modifier.weight(1f).pointerInput(Unit) {
+                        detectTransformGestures { _, _, zoom, _ ->
+                            if (zoom != 1f) gridCellMinWidth = (gridCellMinWidth * zoom).coerceIn(80f, 360f)
+                        }
+                    },
                     contentPadding = PaddingValues(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -843,6 +860,7 @@ private fun PhotoOrderScreen(
                             modifier = Modifier.pointerInput(item.uri) {
                                 detectTapGestures(
                                     onTap = {
+                                        viewerMedia = visibleMedia
                                         selectedViewerIndex = visibleMedia.indexOf(item).takeIf { it >= 0 }
                                     },
                                     onLongPress = {
@@ -921,7 +939,9 @@ private fun PhotoOrderScreen(
                     model = photo.uri,
                     contentDescription = photo.name,
                     modifier = Modifier.fillMaxWidth(0.62f + 0.37f * mainPreviewProgress)
-                        .height(maxHeight * (0.52f + 0.40f * mainPreviewProgress)),
+                        // The main overlay spans the whole screen; the AI page preview
+                        // is constrained to its shorter content area. Match that visual size.
+                        .height(maxHeight * (0.38f + 0.30f * mainPreviewProgress)),
                     contentScale = ContentScale.Fit
                 )
             }
@@ -1022,7 +1042,7 @@ private fun PhotoOrderScreen(
 
     selectedViewerIndex?.let { index ->
         FullscreenMediaViewer(
-            media = visibleMedia,
+            media = viewerMedia,
             initialIndex = index,
             onClose = { selectedViewerIndex = null }
         )
