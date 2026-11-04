@@ -493,7 +493,7 @@ internal fun AiOrganizerPage(
                 model = photo.media.uri,
                 contentDescription = photo.media.name,
                 modifier = Modifier.fillMaxWidth(0.62f + 0.37f * previewProgress)
-                    .height(maxHeight * (0.52f + 0.32f * previewProgress)),
+                    .height(maxHeight * (0.52f + 0.40f * previewProgress)),
                 contentScale = ContentScale.Fit
             )
         }
