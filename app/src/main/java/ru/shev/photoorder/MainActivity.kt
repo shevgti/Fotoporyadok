@@ -69,6 +69,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -349,6 +352,11 @@ private fun PhotoOrderScreen(
     var updateDownloadedBytes by remember { mutableStateOf(0L) }
     var updateTotalBytes by remember { mutableStateOf(0L) }
     var selectedPage by remember { mutableStateOf(0) }
+    val pagePagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+    LaunchedEffect(selectedPage) {
+        if (pagePagerState.currentPage != selectedPage) pagePagerState.animateScrollToPage(selectedPage)
+    }
+    LaunchedEffect(pagePagerState.currentPage) { selectedPage = pagePagerState.currentPage }
     var sortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     var sortStatus by remember { mutableStateOf<String?>(null) }
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
@@ -729,30 +737,32 @@ private fun PhotoOrderScreen(
         Column(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(selectedPage, drawerState.isOpen, selectedViewerIndex, zoomedMainPhoto) {
-                var dragStartX = 0f
-                var dragDistance = 0f
-                var pageChanged = false
-                val edgeExclusion = 48.dp.toPx()
-                val pageSwipeThreshold = 72.dp.toPx()
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        dragStartX = offset.x
-                        dragDistance = 0f
-                        pageChanged = false
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        dragDistance += dragAmount
-                        val canSwitchPages = !drawerState.isOpen &&
-                            selectedViewerIndex == null && zoomedMainPhoto == null &&
-                            dragStartX > edgeExclusion
-                        if (canSwitchPages && !pageChanged && kotlin.math.abs(dragDistance) >= pageSwipeThreshold) {
-                            selectedPage = if (dragDistance < 0f) 1 else 0
-                            pageChanged = true
-                            change.consume()
-                        }
+            .pointerInput(drawerState.isOpen, selectedViewerIndex, zoomedMainPhoto) {
+                val edgeSize = 32.dp.toPx()
+                val touchSlop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    if (down.position.x <= edgeSize && !drawerState.isOpen &&
+                        selectedViewerIndex == null && zoomedMainPhoto == null
+                    ) {
+                        var total = Offset.Zero
+                        var opened = false
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id }
+                            if (change != null && change.pressed) {
+                                total += change.position - change.previousPosition
+                                if (total.x > touchSlop && abs(total.x) > abs(total.y) * 1.2f) {
+                                    change.consume()
+                                    opened = true
+                                    scope.launch { drawerState.open() }
+                                } else if (total.x < -touchSlop || abs(total.y) > touchSlop) {
+                                    break
+                                }
+                            }
+                        } while (event.changes.any { it.pressed } && !opened)
                     }
-                )
+                }
             }
             .background(palette.background.copy(alpha = 0.64f))
             .statusBarsPadding()
@@ -851,19 +861,37 @@ private fun PhotoOrderScreen(
             )
         }
 
-        if (selectedPage == 1 && hasPermission) {
-            AiOrganizerPage(
-                media = media,
-                palette = palette,
-                modifier = Modifier.weight(1f),
-                onExit = { selectedPage = 0 },
-                onOpenMedia = { folderMedia, selected ->
-                    // Keep the viewer strictly inside the album/category that was opened.
-                    viewerMedia = folderMedia
-                    selectedViewerIndex = folderMedia.indexOfFirst { it.uri == selected.uri }.takeIf { it >= 0 }
+        HorizontalPager(
+            state = pagePagerState,
+            modifier = Modifier.weight(1f),
+            userScrollEnabled = selectedViewerIndex == null && zoomedMainPhoto == null,
+            beyondViewportPageCount = 1
+        ) { page ->
+            val pageOffset = (page - pagePagerState.currentPage - pagePagerState.currentPageOffsetFraction)
+                .coerceIn(-1f, 1f)
+            Box(
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    rotationY = pageOffset * 90f
+                    transformOrigin = TransformOrigin(if (pageOffset > 0f) 0f else 1f, 0.5f)
+                    cameraDistance = 24f * density
+                    alpha = 1f - abs(pageOffset) * 0.12f
                 }
-            )
-        } else if (!hasPermission) {
+            ) {
+                if (page == 1 && hasPermission) {
+                    AiOrganizerPage(
+                        media = media,
+                        palette = palette,
+                        modifier = Modifier.fillMaxSize(),
+                        onExit = { scope.launch { pagePagerState.animateScrollToPage(0) } },
+                        onOpenMedia = { folderMedia, selected ->
+                            // Keep the viewer strictly inside the album/category that was opened.
+                            viewerMedia = folderMedia
+                            selectedViewerIndex = folderMedia.indexOfFirst { it.uri == selected.uri }.takeIf { it >= 0 }
+                        }
+                    )
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+        if (!hasPermission) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = palette.card)
@@ -1068,6 +1096,10 @@ private fun PhotoOrderScreen(
                 }
             }
         }
+                    }
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)
                 .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp),
@@ -1077,7 +1109,7 @@ private fun PhotoOrderScreen(
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
                          .background(if (selectedPage == index) palette.primary else Color.Transparent)
-                        .clickable { selectedPage = index }.padding(vertical = 10.dp),
+                        .clickable { scope.launch { pagePagerState.animateScrollToPage(index) } }.padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) { Text(label, color = if (selectedPage == index) Color.White else palette.muted, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.SemiBold else FontWeight.Normal) }
             }
