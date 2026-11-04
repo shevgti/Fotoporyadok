@@ -63,8 +63,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -1276,7 +1275,7 @@ private fun FullscreenMediaViewer(
                         // The fullscreen dialog draws edge-to-edge. Respect safe drawing
                         // insets (including the side inset in landscape) before placing
                         // the orientation control so it never sits beyond the display.
-                        .windowInsetsPadding(WindowInsets.systemBars)
+                        .navigationBarsPadding()
                         .padding(end = 12.dp, bottom = 76.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xCC202020))
