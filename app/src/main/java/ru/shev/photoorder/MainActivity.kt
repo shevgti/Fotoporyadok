@@ -236,6 +236,8 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
     var updateMessage by remember { mutableStateOf<String?>(null) }
     var checkingUpdate by remember { mutableStateOf(false) }
     var downloadingUpdate by remember { mutableStateOf(false) }
+    var updateDownloadedBytes by remember { mutableStateOf(0L) }
+    var updateTotalBytes by remember { mutableStateOf(0L) }
     var selectedPage by remember { mutableStateOf(0) }
     var sortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     var sortStatus by remember { mutableStateOf<String?>(null) }
@@ -765,19 +767,46 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                 TextButton(enabled = !downloadingUpdate, onClick = {
                     scope.launch {
                         downloadingUpdate = true
+                        updateDownloadedBytes = 0L
+                        updateTotalBytes = 0L
                         try {
-                            val started = AppUpdater.downloadAndInstall(context, update)
+                            val started = AppUpdater.downloadAndInstall(context, update) { downloaded, total ->
+                                updateDownloadedBytes = downloaded
+                                updateTotalBytes = total
+                            }
                             if (started) { updateInfo = null; showUpdateDialog = false }
-                            else updateMessage = "Разреши установку приложений для ФотоПорядка в настройках. Вернись сюда и снова нажми «Скачать и установить»."
+                            else {
+                                showUpdateDialog = false
+                                updateMessage = "Разреши установку приложений для ФотоПорядка в настройках. Вернись сюда и снова нажми «Скачать и установить»."
+                            }
                         } catch (error: Exception) {
-                            updateMessage = "Не удалось установить обновление: ${error.message ?: "ошибка"}"
+                            // Show the failure above the update dialog instead of hiding it behind that dialog.
+                            showUpdateDialog = false
+                            updateMessage = "Не удалось скачать или открыть обновление: ${error.message ?: error.javaClass.simpleName}. Попробуй ещё раз."
                         } finally { downloadingUpdate = false }
                     }
                 }) { Text(if (downloadingUpdate) "Скачиваем…" else "Скачать и установить") }
             },
             dismissButton = { TextButton(onClick = { updateInfo = null }, enabled = !downloadingUpdate) { Text("Позже") } },
             title = { Text("Доступна версия ${update.versionName}") },
-            text = { Text((update.notes.substringBefore("\n\n").ifBlank { "Доступна новая версия приложения." }) + "\n\nФайл: app-release.apk\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName) }
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text((update.notes.substringBefore("\\n\\n").ifBlank { "Доступна новая версия приложения." }) + "\\n\\nФайл: app-release.apk\\nИсточник: GitHub → Releases → ФотоПорядок " + update.versionName)
+                    if (downloadingUpdate) {
+                        if (updateTotalBytes > 0L) {
+                            val percent = ((updateDownloadedBytes * 100L) / updateTotalBytes).toInt().coerceIn(0, 100)
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { updateDownloadedBytes.toFloat() / updateTotalBytes.toFloat() },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text("Скачано: $percent%  •  ${updateDownloadedBytes / (1024 * 1024)} из ${updateTotalBytes / (1024 * 1024)} МБ")
+                        } else {
+                            androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text("Подключаемся к серверу загрузки…")
+                        }
+                    }
+                }
+            }
         )
     }
 
