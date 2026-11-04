@@ -63,7 +63,7 @@ internal class UpdateCheckWorker(
                 }
             }
 
-            val posted = showUpdateNotification(update.versionName)
+            val posted = showUpdateNotification(update)
             if (posted) {
                 prefs.edit().putInt(KEY_NOTIFIED_VERSION, update.versionCode).apply()
                 saveStatus("Найдено обновление ${update.versionName}; уведомление отправлено")
@@ -105,25 +105,30 @@ internal class UpdateCheckWorker(
             .apply()
     }
 
-    private fun showUpdateNotification(versionName: String): Boolean {
+    private fun showUpdateNotification(update: UpdateInfo): Boolean {
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, "Уведомления ФотоПорядка", NotificationManager.IMPORTANCE_DEFAULT)
             )
         }
-        val launchIntent = applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName)
-        val pending = launchIntent?.let {
-            PendingIntent.getActivity(
-                applicationContext, NOTIFICATION_ID, it,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        val launchIntent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_OPEN_UPDATE_DIALOG, true)
+            putExtra(EXTRA_UPDATE_VERSION_CODE, update.versionCode)
+            putExtra(EXTRA_UPDATE_VERSION_NAME, update.versionName)
+            putExtra(EXTRA_UPDATE_DOWNLOAD_URL, update.downloadUrl)
+            putExtra(EXTRA_UPDATE_NOTES, update.notes)
         }
+        val pending = PendingIntent.getActivity(
+            applicationContext, NOTIFICATION_ID, launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Доступно обновление ФотоПорядка")
-            .setContentText("Новая версия $versionName готова к установке.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Новая версия $versionName готова к установке. Нажми, чтобы открыть ФотоПорядок."))
+            .setContentText("Новая версия ${update.versionName} готова к установке.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Новая версия ${update.versionName} готова к установке. Нажми, чтобы открыть ФотоПорядок."))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .apply { if (pending != null) setContentIntent(pending) }
