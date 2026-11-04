@@ -30,8 +30,11 @@ internal object AppUpdater {
             requestMethod = "GET"
             connectTimeout = 15000
             readTimeout = 15000
+            setUseCaches(false)
             setRequestProperty("Accept", "application/vnd.github+json")
             setRequestProperty("User-Agent", "FotoPoryadok-Android")
+            setRequestProperty("Cache-Control", "no-cache")
+            setRequestProperty("Pragma", "no-cache")
         }
         try {
             if (connection.responseCode !in 200..299) {
@@ -39,12 +42,14 @@ internal object AppUpdater {
             }
             val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) return@withContext null
-            val tag = release.optString("tag_name")
+            val tag = release.optString("tag_name").trim()
+            if (tag.isBlank()) error("GitHub вернул релиз без номера версии")
             val versionName = tag.removePrefix("v")
-            val versionCode = Regex("""(?m)^versionCode:\s*(\d+)\s*$""")
+            val versionCode = Regex("""(?im)^\s*versionCode\s*:\s*(\d+)\s*$""")
                 .find(release.optString("body"))?.groupValues?.get(1)?.toIntOrNull()
-                ?: 0
-            val assets = release.optJSONArray("assets") ?: return@withContext null
+                ?: error("В релизе $tag отсутствует корректная строка versionCode")
+            val assets = release.optJSONArray("assets")
+                ?: error("В релизе $tag не найден список файлов APK")
             var downloadUrl: String? = null
             for (i in 0 until assets.length()) {
                 val asset = assets.getJSONObject(i)
@@ -53,7 +58,10 @@ internal object AppUpdater {
                     break
                 }
             }
-            if (versionCode <= installedVersionCode || downloadUrl.isNullOrBlank()) {
+            if (downloadUrl.isNullOrBlank()) {
+                error("В релизе $tag отсутствует файл $APK_NAME")
+            }
+            if (versionCode <= installedVersionCode) {
                 null
             } else {
                 UpdateInfo(versionCode, versionName, downloadUrl, release.optString("body"))
