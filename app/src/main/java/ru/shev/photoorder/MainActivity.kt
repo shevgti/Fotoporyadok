@@ -242,8 +242,10 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
+    // The AI albums screen owns Back while it is visible so it can first
+    // close an opened album/category instead of letting the Activity exit.
     androidx.activity.compose.BackHandler(
-        enabled = selectedPage != 0 || selectedViewerIndex != null || drawerState.isOpen
+        enabled = (selectedPage != 0 && selectedPage != 1) || selectedViewerIndex != null || drawerState.isOpen
     ) {
         when {
             selectedViewerIndex != null -> selectedViewerIndex = null
@@ -580,7 +582,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             AiOrganizerPage(
                 media = media,
                 palette = palette,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onExit = { selectedPage = 0 }
             )
         } else if (!hasPermission) {
             Card(
