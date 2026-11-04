@@ -278,8 +278,16 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
         } else if (selectedCategory != null) {
             val categoryPhotos = results.filter { it.category == selectedCategory }
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(selectedCategory!!, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                TextButton(onClick = { selectedCategory = null }) { Text("Назад") }
+                Text(
+                    selectedCategory!!,
+                    modifier = Modifier.weight(1f),
+                    color = palette.text,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                TextButton(onClick = { selectedCategory = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
@@ -293,8 +301,16 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
             }
         } else if (selectedAlbum != null) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(selectedAlbum!!.title, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                TextButton(onClick = { selectedAlbum = null }) { Text("Назад") }
+                Text(
+                    selectedAlbum!!.title,
+                    modifier = Modifier.weight(1f),
+                    color = palette.text,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                TextButton(onClick = { selectedAlbum = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
