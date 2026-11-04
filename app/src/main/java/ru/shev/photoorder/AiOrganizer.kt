@@ -458,7 +458,8 @@ internal fun AiOrganizerPage(
     zoomedPhoto?.let { photo ->
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize()
-                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.82f))
+                // Keep the area around the preview transparent instead of
+                // adding a grey/white-looking backdrop behind the photo.
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -468,9 +469,8 @@ internal fun AiOrganizerPage(
             AsyncImage(
                 model = photo.media.uri,
                 contentDescription = photo.media.name,
-                modifier = Modifier.fillMaxWidth(0.92f)
-                    .height(maxHeight * 0.56f)
-                    .clip(RoundedCornerShape(18.dp)),
+                modifier = Modifier.fillMaxWidth(0.97f)
+                    .height(maxHeight * 0.70f),
                 contentScale = ContentScale.Fit
             )
         }
