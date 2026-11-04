@@ -207,6 +207,7 @@ internal fun AiOrganizerPage(
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var previewPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -330,14 +331,25 @@ internal fun AiOrganizerPage(
                 )
                 TextButton(onClick = { selectedCategory = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
-                    AsyncImage(
-                        model = photo.media.uri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        AsyncImage(
+                            model = photo.media.uri,
+                            contentDescription = photo.media.name,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(3.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         } else if (selectedAlbum != null) {
@@ -353,18 +365,47 @@ internal fun AiOrganizerPage(
                 )
                 TextButton(onClick = { selectedAlbum = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
-                    AsyncImage(
-                        model = photo.media.uri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        AsyncImage(
+                            model = photo.media.uri,
+                            contentDescription = photo.media.name,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(3.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         } else if (results.isEmpty() && !analyzing) {
             Text("После анализа здесь появятся альбомы, названные по содержимому фотографий.", color = palette.muted, fontSize = 12.sp)
         }
+    }
+
+    previewPhoto?.let { photo ->
+        AlertDialog(
+            onDismissRequest = { previewPhoto = null },
+            title = { Text(photo.media.name, maxLines = 1) },
+            text = {
+                AsyncImage(
+                    model = photo.media.uri,
+                    contentDescription = photo.media.name,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
+                    contentScale = ContentScale.Fit
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { previewPhoto = null }) { Text("Закрыть") }
+            }
+        )
     }
 }
