@@ -37,6 +37,13 @@ internal class UpdateCheckWorker(
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) return Result.success()
             if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) return Result.success()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                if (manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) {
+                    // Leave the version unmarked so checking resumes after the user enables this channel.
+                    return Result.success()
+                }
+            }
 
             val posted = showUpdateNotification(update.versionName)
             if (posted) {
