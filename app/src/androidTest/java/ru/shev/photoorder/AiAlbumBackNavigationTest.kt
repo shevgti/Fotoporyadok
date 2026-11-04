@@ -162,8 +162,8 @@ class AiAlbumBackNavigationTest {
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.Files.FileColumns.DISPLAY_NAME
         )
-        val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
-        val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
+        val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? AND ${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(), "fp_back_test_%")
         val mediaCount = resolverCount(
             MediaStore.Files.getContentUri("external"),
             projection,
@@ -249,8 +249,8 @@ class AiAlbumBackNavigationTest {
                 MediaStore.Files.FileColumns.DATE_ADDED,
                 MediaStore.MediaColumns.DATE_TAKEN
             )
-            val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
-            val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
+            val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? AND ${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+            val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(), "fp_back_test_%")
             resolver.query(
                 MediaStore.Files.getContentUri("external"),
                 projection,
