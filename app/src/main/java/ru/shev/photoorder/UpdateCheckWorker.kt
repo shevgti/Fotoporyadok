@@ -27,22 +27,38 @@ internal class UpdateCheckWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        saveStatus("Фоновая проверка выполняется…")
         return try {
-            val update = AppUpdater.check(BuildConfig.VERSION_CODE) ?: return Result.success()
+            val update = AppUpdater.check(BuildConfig.VERSION_CODE) ?: run {
+                saveStatus("Новых версий не найдено")
+                return Result.success()
+            }
             val appPrefs = applicationContext.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
-            if (!appPrefs.getBoolean("notifications_enabled", true)) return Result.success()
+            if (!appPrefs.getBoolean("notifications_enabled", true)) {
+                saveStatus("Уведомления выключены в настройках ФотоПорядка")
+                return Result.success()
+            }
             val prefs = applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val notifiedVersion = prefs.getInt(KEY_NOTIFIED_VERSION, 0)
-            if (update.versionCode <= notifiedVersion) return Result.success()
+            if (update.versionCode <= notifiedVersion) {
+                saveStatus("Для версии ${update.versionName} уведомление уже отправлялось")
+                return Result.success()
+            }
 
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-            ) return Result.success()
-            if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) return Result.success()
+            ) {
+                saveStatus("Нет разрешения Android на отправку уведомлений")
+                return Result.success()
+            }
+            if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) {
+                saveStatus("Уведомления приложения запрещены в настройках Android")
+                return Result.success()
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 if (manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) {
-                    // Leave the version unmarked so checking resumes after the user enables this channel.
+                    saveStatus("Канал уведомлений ФотоПорядка выключен в Android")
                     return Result.success()
                 }
             }
@@ -50,14 +66,24 @@ internal class UpdateCheckWorker(
             val posted = showUpdateNotification(update.versionName)
             if (posted) {
                 prefs.edit().putInt(KEY_NOTIFIED_VERSION, update.versionCode).apply()
+                saveStatus("Найдено обновление ${update.versionName}; уведомление отправлено")
                 Result.success()
             } else {
-                // Do not remember the version if Android rejected the notification.
+                saveStatus("Android не принял уведомление; будет повторная попытка")
                 Result.retry()
             }
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            saveStatus("Ошибка фоновой проверки: ${error.message ?: error.javaClass.simpleName}")
             Result.retry()
         }
+    }
+
+    private fun saveStatus(message: String) {
+        applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_STATUS, message)
+            .putLong(KEY_LAST_CHECKED_AT, System.currentTimeMillis())
+            .apply()
     }
 
     private fun showUpdateNotification(versionName: String): Boolean {
@@ -95,6 +121,8 @@ internal class UpdateCheckWorker(
     companion object {
         private const val PREFS = "photoorder_update_worker"
         private const val KEY_NOTIFIED_VERSION = "notified_version_code"
+        private const val KEY_LAST_STATUS = "last_check_status"
+        private const val KEY_LAST_CHECKED_AT = "last_check_timestamp"
         private const val CHANNEL_ID = "photoorder_updates"
         private const val NOTIFICATION_ID = 1002
         private const val UNIQUE_WORK = "photoorder_periodic_update_check"
