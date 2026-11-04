@@ -245,7 +245,7 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
                                     AsyncImage(
                                         model = photo.media.uri,
                                         contentDescription = null,
-                                        modifier = Modifier.fillMaxWidth().aspectRatio(1.45f),
+                                        modifier = Modifier.fillMaxWidth().height(62.dp),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
