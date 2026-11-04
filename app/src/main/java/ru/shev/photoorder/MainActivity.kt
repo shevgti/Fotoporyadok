@@ -64,9 +64,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
@@ -117,6 +119,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.math.sqrt
+import kotlin.math.abs
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -488,6 +492,7 @@ private fun PhotoOrderScreen(
     }
 
     ModalNavigationDrawer(
+        gesturesEnabled = false,
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -846,8 +851,34 @@ private fun PhotoOrderScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(gridCellMinWidth.dp),
                     modifier = Modifier.weight(1f).pointerInput(Unit) {
-                        detectTransformGestures { _, _, zoom, _ ->
-                            if (zoom != 1f) gridCellMinWidth = (gridCellMinWidth * zoom).coerceIn(80f, 360f)
+                        // Observe pinch gestures in the Initial pass so child photo
+                        // tap handlers cannot steal the second pointer.
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            var previousSpan = 0f
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val pressed = event.changes.filter { it.pressed }
+                                if (pressed.size >= 2) {
+                                    val centerX = pressed.map { it.position.x }.average().toFloat()
+                                    val centerY = pressed.map { it.position.y }.average().toFloat()
+                                    val span = pressed.map { change ->
+                                        val dx = change.position.x - centerX
+                                        val dy = change.position.y - centerY
+                                        sqrt(dx * dx + dy * dy)
+                                    }.average().toFloat()
+                                    if (previousSpan > 0f && span > 0f) {
+                                        val scale = span / previousSpan
+                                        if (abs(scale - 1f) > 0.001f) {
+                                            gridCellMinWidth = (gridCellMinWidth * scale).coerceIn(60f, 420f)
+                                        }
+                                    }
+                                    previousSpan = span
+                                    pressed.forEach { it.consume() }
+                                } else {
+                                    previousSpan = 0f
+                                }
+                            } while (event.changes.any { it.pressed })
                         }
                     },
                     contentPadding = PaddingValues(bottom = 12.dp),
