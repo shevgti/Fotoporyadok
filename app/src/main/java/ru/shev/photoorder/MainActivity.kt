@@ -26,6 +26,8 @@ import androidx.media3.common.MediaItem as PlayerMediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
@@ -199,6 +201,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = palette.background) {
                     PhotoOrderScreen(
+                        lifecycle = lifecycle,
                         themeId = selectedThemeId,
                         onThemeChange = { id ->
                             selectedThemeId = id
@@ -213,7 +216,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
+private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
     val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -251,28 +254,32 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            checkingUpdate = true
-            try {
-                val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
-                if (latest != null && latest.versionCode != updateInfo?.versionCode) {
-                    updateInfo = latest
-                    postAppNotification(
-                        context,
-                        "Доступно обновление ФотоПорядка",
-                        "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
-                        1002
-                    )
-                } else if (latest == null) {
-                    updateInfo = null
+    // Check immediately whenever the app becomes visible again. While it stays
+    // in the foreground, keep the 30-minute safety refresh as before.
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                checkingUpdate = true
+                try {
+                    val latest = AppUpdater.check(BuildConfig.VERSION_CODE)
+                    if (latest != null && latest.versionCode != updateInfo?.versionCode) {
+                        updateInfo = latest
+                        postAppNotification(
+                            context,
+                            "Доступно обновление ФотоПорядка",
+                            "Новая версия ${latest.versionName} готова к установке. Нажми, чтобы открыть приложение.",
+                            1002
+                        )
+                    } else if (latest == null) {
+                        updateInfo = null
+                    }
+                } catch (_: Exception) {
+                    // Ошибка сети не должна мешать работе с медиатекой.
+                } finally {
+                    checkingUpdate = false
                 }
-            } catch (_: Exception) {
-                // Ошибка сети не должна мешать работе с медиатекой.
-            } finally {
-                checkingUpdate = false
+                kotlinx.coroutines.delay(30 * 60 * 1000L)
             }
-            kotlinx.coroutines.delay(30 * 60 * 1000L)
         }
     }
 
