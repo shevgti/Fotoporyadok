@@ -40,6 +40,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
@@ -344,6 +348,16 @@ private fun PhotoOrderScreen(
     var sortStatus by remember { mutableStateOf<String?>(null) }
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
+    val updatePulseTransition = rememberInfiniteTransition(label = "updateButtonPulse")
+    val updatePulse by updatePulseTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "updateButtonPulseValue"
+    )
 
     // Nested AI navigation is handled by AiOrganizerPage. On the root
     // screen, system Back asks for confirmation instead of closing by accident.
@@ -749,24 +763,45 @@ private fun PhotoOrderScreen(
             }
             if (updateInfo != null) {
                 Box(
-                    modifier = Modifier.shadow(5.dp, RoundedCornerShape(12.dp))
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF39D477), Color(0xFF159B50))))
+                    modifier = Modifier
+                        .graphicsLayer {
+                            val scale = 1f + updatePulse * 0.018f
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .shadow(5.dp + updatePulse * 5.dp, RoundedCornerShape(11.dp))
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color(
+                                        red = 0.20f + updatePulse * 0.10f,
+                                        green = 0.72f + updatePulse * 0.16f,
+                                        blue = 0.39f + updatePulse * 0.08f
+                                    ),
+                                    Color(
+                                        red = 0.08f + updatePulse * 0.04f,
+                                        green = 0.58f + updatePulse * 0.12f,
+                                        blue = 0.29f + updatePulse * 0.07f
+                                    )
+                                )
+                            )
+                        )
                         .clickable(enabled = !downloadingUpdate) { showUpdateDialog = true }
-                        .padding(horizontal = 9.dp, vertical = 6.dp)
+                        .padding(horizontal = 6.dp, vertical = 5.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
                             "● Доступно новое обновление",
                             color = Color.White,
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1
                         )
                         Text(
                             "Версия ${updateInfo?.versionName}",
                             color = Color.White.copy(alpha = 0.94f),
-                            fontSize = 9.sp,
+                            fontSize = 8.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
