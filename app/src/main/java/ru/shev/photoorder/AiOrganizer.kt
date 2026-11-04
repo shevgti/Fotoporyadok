@@ -6,6 +6,10 @@ import android.os.Looper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -223,7 +229,8 @@ internal fun AiOrganizerPage(
     media: List<MediaItem>,
     palette: AppTheme,
     modifier: Modifier = Modifier,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    onBackActionChanged: ((() -> Unit)?) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
@@ -236,7 +243,6 @@ internal fun AiOrganizerPage(
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var previewPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -251,16 +257,18 @@ internal fun AiOrganizerPage(
         }
     }
 
-    // Own every Back gesture while this page is visible. First close the
-    // nested album/category; only a second Back returns to the main screen.
-    androidx.activity.compose.BackHandler(enabled = true) {
+    // Keep the registered callback stable while its action always sees the
+    // latest album/category state. This avoids a parent-child recomposition loop.
+    val latestBackAction by rememberUpdatedState(newValue = {
         when {
-            // Close the enlarged preview first, then return from the album.
-            previewPhoto != null -> previewPhoto = null
             selectedAlbum != null -> selectedAlbum = null
             selectedCategory != null -> selectedCategory = null
             else -> onExit()
         }
+    })
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onBackActionChanged { latestBackAction() }
+        onDispose { onBackActionChanged(null) }
     }
 
     // Fill the bounded area provided by the parent. The weighted LazyColumn
@@ -370,7 +378,19 @@ internal fun AiOrganizerPage(
             ) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        modifier = run {
+                            val interaction = remember(photo.media.uri) { MutableInteractionSource() }
+                            val pressed by interaction.collectIsPressedAsState()
+                            val scale by animateFloatAsState(
+                                targetValue = if (pressed) 1.07f else 1f,
+                                animationSpec = tween(durationMillis = 130),
+                                label = "photoPressScale"
+                            )
+                            Modifier.fillMaxWidth()
+                                .zIndex(if (pressed) 1f else 0f)
+                                .graphicsLayer { scaleX = scale; scaleY = scale }
+                                .clickable(interactionSource = interaction, indication = null) { }
+                        },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -404,7 +424,19 @@ internal fun AiOrganizerPage(
             ) {
                 items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
                     Card(
-                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        modifier = run {
+                            val interaction = remember(photo.media.uri) { MutableInteractionSource() }
+                            val pressed by interaction.collectIsPressedAsState()
+                            val scale by animateFloatAsState(
+                                targetValue = if (pressed) 1.07f else 1f,
+                                animationSpec = tween(durationMillis = 130),
+                                label = "photoPressScale"
+                            )
+                            Modifier.fillMaxWidth()
+                                .zIndex(if (pressed) 1f else 0f)
+                                .graphicsLayer { scaleX = scale; scaleY = scale }
+                                .clickable(interactionSource = interaction, indication = null) { }
+                        },
                         colors = CardDefaults.cardColors(containerColor = palette.card),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -422,21 +454,4 @@ internal fun AiOrganizerPage(
         }
     }
 
-    previewPhoto?.let { photo ->
-        AlertDialog(
-            onDismissRequest = { previewPhoto = null },
-            title = { Text(photo.media.name, maxLines = 1) },
-            text = {
-                AsyncImage(
-                    model = photo.media.uri,
-                    contentDescription = photo.media.name,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
-                    contentScale = ContentScale.Fit
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { previewPhoto = null }) { Text("Закрыть") }
-            }
-        )
-    }
 }
