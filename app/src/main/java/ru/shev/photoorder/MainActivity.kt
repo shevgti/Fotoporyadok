@@ -302,7 +302,12 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                 } finally {
                     checkingUpdate = false
                 }
-                kotlinx.coroutines.delay(30 * 60 * 1000L)
+                val updateCheckIntervalMs = if (UpdateCheckWorker.FAST_TEST_MODE) {
+                    UpdateCheckWorker.TEST_INTERVAL_MINUTES * 60_000L
+                } else {
+                    30 * 60 * 1000L
+                }
+                kotlinx.coroutines.delay(updateCheckIntervalMs)
             }
         }
     }
@@ -451,8 +456,13 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                                 Text(label, color = palette.text, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
-                        Text("При обнаружении новой версии приложение автоматически скачает APK, когда оно открыто. Перед установкой Android всё равно попросит подтверждение.",
-                            color = palette.muted, fontSize = 10.sp)
+                        Text(
+                            if (UpdateCheckWorker.FAST_TEST_MODE)
+                                "ТЕСТОВЫЙ РЕЖИМ: проверка обновлений примерно каждые 2 минуты. После теста интервал будет возвращён."
+                            else
+                                "При обнаружении новой версии приложение автоматически скачает APK, когда оно открыто. Перед установкой Android всё равно попросит подтверждение.",
+                            color = palette.muted, fontSize = 10.sp
+                        )
                         val workerPrefs = context.getSharedPreferences("photoorder_update_worker", Context.MODE_PRIVATE)
                         val lastWorkerStatus = workerPrefs.getString("last_check_status", "Фоновая проверка ещё не запускалась")
                             ?: "Фоновая проверка ещё не запускалась"
