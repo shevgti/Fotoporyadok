@@ -1215,6 +1215,7 @@ private fun createAppNotificationChannel(context: Context) {
 
 private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int, update: UpdateInfo? = null) {
     if (!appNotificationsEnabled(context)) return
+    update?.let { saveNotificationUpdate(context, it) }
     createAppNotificationChannel(context)
     val launchIntent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
