@@ -511,7 +511,7 @@ private fun PhotoOrderScreen(
     }
 
     ModalNavigationDrawer(
-        gesturesEnabled = false,
+        gesturesEnabled = true,
         scrimColor = Color.Black.copy(alpha = 0.48f),
         drawerState = drawerState,
         drawerContent = {
