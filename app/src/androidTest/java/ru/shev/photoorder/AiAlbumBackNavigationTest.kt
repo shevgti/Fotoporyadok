@@ -105,7 +105,7 @@ class AiAlbumBackNavigationTest {
     fun systemBackFromCategoryReturnsToAiAlbumList() {
         waitForTextContains("ИИ-альбомы").click()
         waitForText("ИИ-фотограф")
-        waitForTextContains("Умные альбомы")
+        runAiAnalysisAndWait()
         waitForText("Природа").click()
         waitForText("Назад")
 
@@ -133,9 +133,18 @@ class AiAlbumBackNavigationTest {
     private fun openAiAlbum() {
         waitForTextContains("ИИ-альбомы").click()
         waitForText("ИИ-фотограф")
-        waitForTextContains("Умные альбомы")
+        runAiAnalysisAndWait()
         waitForTextContains("Отдых на море").click()
         waitForText("Назад")
+    }
+
+    private fun runAiAnalysisAndWait() {
+        // Opening the AI page does not automatically load cached results.
+        // Start the analysis explicitly; all fixture photos have cache rows,
+        // so this exercises the real UI flow without invoking ML inference.
+        waitForTextContains("Запустить ИИ-анализ").click()
+        waitForTextContains("Готово: распознано 3 фото")
+        waitForTextContains("Умные альбомы")
     }
 
     private fun waitForText(text: String): UiObject2 {
