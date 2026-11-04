@@ -13,7 +13,9 @@ import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -35,16 +37,28 @@ internal class UpdateCheckWorker(
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) return Result.success()
             if (!NotificationManagerCompat.from(applicationContext).areNotificationsEnabled()) return Result.success()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                if (manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) {
+                    // Leave the version unmarked so checking resumes after the user enables this channel.
+                    return Result.success()
+                }
+            }
 
-            showUpdateNotification(update.versionName)
-            prefs.edit().putInt(KEY_NOTIFIED_VERSION, update.versionCode).apply()
-            Result.success()
+            val posted = showUpdateNotification(update.versionName)
+            if (posted) {
+                prefs.edit().putInt(KEY_NOTIFIED_VERSION, update.versionCode).apply()
+                Result.success()
+            } else {
+                // Do not remember the version if Android rejected the notification.
+                Result.retry()
+            }
         } catch (_: Exception) {
             Result.retry()
         }
     }
 
-    private fun showUpdateNotification(versionName: String) {
+    private fun showUpdateNotification(versionName: String): Boolean {
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
@@ -67,10 +81,12 @@ internal class UpdateCheckWorker(
             .setAutoCancel(true)
             .apply { if (pending != null) setContentIntent(pending) }
             .build()
-        try {
+        return try {
             NotificationManagerCompat.from(applicationContext).notify(NOTIFICATION_ID, notification)
+            true
         } catch (_: SecurityException) {
             // Notification permission may be revoked between the permission check and posting.
+            false
         }
     }
 
@@ -78,19 +94,33 @@ internal class UpdateCheckWorker(
         private const val PREFS = "photoorder_update_worker"
         private const val KEY_NOTIFIED_VERSION = "notified_version_code"
         private const val CHANNEL_ID = "photoorder_updates"
-        private const val NOTIFICATION_ID = 2201
+        private const val NOTIFICATION_ID = 1002
         private const val UNIQUE_WORK = "photoorder_periodic_update_check"
+        private const val IMMEDIATE_WORK = "photoorder_update_check_immediate"
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-            val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(12, TimeUnit.HOURS)
+            val manager = WorkManager.getInstance(context)
+
+            // Check soon after app startup, then keep checking in the background.
+            manager.enqueueUniqueWork(
+                IMMEDIATE_WORK,
+                ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                    .setConstraints(constraints)
+                    .build()
+            )
+
+            // Android's minimum periodic interval is 15 minutes. UPDATE replaces
+            // an older 12-hour schedule already stored on the device.
+            val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            manager.enqueueUniquePeriodicWork(
                 UNIQUE_WORK,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }
