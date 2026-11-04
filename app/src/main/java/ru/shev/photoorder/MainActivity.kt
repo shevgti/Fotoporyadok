@@ -396,7 +396,7 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                 }
                 if (showNotificationSettings) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(if (notificationsEnabled) "Системное разрешение Android: включено" else "Системное разрешение Android: выключено",
+                        Text(if (systemNotificationsAllowed(context)) "Системное разрешение Android: включено" else "Системное разрешение Android: выключено",
                             color = palette.muted, fontSize = 11.sp)
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(palette.card)
                             .clickable {
@@ -445,7 +445,7 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
                                 Text(label, color = palette.text, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
-                        Text("Автоматически скачает APK. Перед установкой Android всё равно попросит подтверждение.",
+                        Text("При обнаружении новой версии приложение автоматически скачает APK, когда оно открыто. Перед установкой Android всё равно попросит подтверждение.",
                             color = palette.muted, fontSize = 10.sp)
                     }
                 }
@@ -1072,13 +1072,16 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
 
 private const val APP_NOTIFICATION_CHANNEL = "photoorder_updates"
 
-private fun appNotificationsEnabled(context: Context): Boolean {
-    if (!context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("notifications_enabled", true)) return false
+private fun systemNotificationsAllowed(context: Context): Boolean {
     if (Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     ) return false
     return NotificationManagerCompat.from(context).areNotificationsEnabled()
 }
+
+private fun appNotificationsEnabled(context: Context): Boolean =
+    context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
+        .getBoolean("notifications_enabled", true) && systemNotificationsAllowed(context)
 
 private fun createAppNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
