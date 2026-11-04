@@ -120,7 +120,7 @@ private data class AppNotificationRecord(val id: Long, val title: String, val me
 
 private enum class MediaSort { NEWEST, OLDEST, NAME }
 
-private data class AppTheme(
+internal data class AppTheme(
     val id: Int, val name: String,
     val background: Color, val backgroundEnd: Color,
     val surface: Color, val card: Color,
