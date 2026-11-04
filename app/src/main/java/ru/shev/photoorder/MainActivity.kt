@@ -184,9 +184,14 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
 }
 
 
+private const val EXTRA_OPEN_UPDATE_DIALOG = "ru.shev.photoorder.extra.OPEN_UPDATE_DIALOG"
+
 class MainActivity : ComponentActivity() {
+    private var openUpdateDialogRequest by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        openUpdateDialogRequest = intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false
         UpdateCheckWorker.schedule(this)
         // Create the channel at app startup so Android/HyperOS can expose
         // the app's notification controls even before the first notification.
@@ -209,6 +214,8 @@ class MainActivity : ComponentActivity() {
                     PhotoOrderScreen(
                         lifecycle = lifecycle,
                         themeId = selectedThemeId,
+                        openUpdateDialogRequest = openUpdateDialogRequest,
+                        onUpdateDialogRequestHandled = { openUpdateDialogRequest = false },
                         onThemeChange = { id ->
                             selectedThemeId = id
                             getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
@@ -219,10 +226,24 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
+            openUpdateDialogRequest = true
+        }
+    }
 }
 
 @Composable
-private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: (Int) -> Unit) {
+private fun PhotoOrderScreen(
+    lifecycle: Lifecycle,
+    themeId: Int,
+    openUpdateDialogRequest: Boolean,
+    onUpdateDialogRequestHandled: () -> Unit,
+    onThemeChange: (Int) -> Unit
+) {
     val context = LocalContext.current
     val palette = appThemes[themeId]
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -265,6 +286,27 @@ private fun PhotoOrderScreen(lifecycle: Lifecycle, themeId: Int, onThemeChange: 
             selectedViewerIndex != null -> selectedViewerIndex = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
             selectedPage == 0 -> showExitDialog = true
+        }
+    }
+
+    LaunchedEffect(openUpdateDialogRequest) {
+        if (openUpdateDialogRequest) {
+            checkingUpdate = true
+            try {
+                // A notification tap explicitly requests the update dialog.
+                val latest = AppUpdater.check(BuildConfig.VERSION_CODE) ?: updateInfo
+                if (latest != null) {
+                    updateInfo = latest
+                    showUpdateDialog = true
+                } else {
+                    updateMessage = "Сейчас нет доступного обновления. Возможно, оно уже установлено."
+                }
+            } catch (error: Exception) {
+                updateMessage = "Не удалось проверить обновление: ${error.message ?: "ошибка сети"}"
+            } finally {
+                checkingUpdate = false
+                onUpdateDialogRequestHandled()
+            }
         }
     }
 
@@ -1135,13 +1177,14 @@ private fun createAppNotificationChannel(context: Context) {
 private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int) {
     if (!appNotificationsEnabled(context)) return
     createAppNotificationChannel(context)
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-    val pendingIntent = launchIntent?.let {
-        PendingIntent.getActivity(
-            context, notificationId, it,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+    val launchIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        putExtra(EXTRA_OPEN_UPDATE_DIALOG, true)
     }
+    val pendingIntent = PendingIntent.getActivity(
+        context, notificationId, launchIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
     val notification = NotificationCompat.Builder(context, APP_NOTIFICATION_CHANNEL)
         .setSmallIcon(R.mipmap.ic_launcher)
         .setContentTitle(title)
