@@ -385,6 +385,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold
                     )
                 }
+                Spacer(modifier = Modifier.height(9.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
@@ -729,7 +730,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     showExitDialog = false
-                    (context as? Activity)?.finish()
+                    (context as? Activity)?.finishAndRemoveTask()
                 }) { Text("Выйти") }
             },
             dismissButton = {
