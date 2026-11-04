@@ -106,7 +106,7 @@ class AiAlbumBackNavigationTest {
         waitForTextContains("ИИ-альбомы").click()
         waitForText("ИИ-фотограф")
         runAiAnalysisAndWait()
-        waitForText("Природа").click()
+        scrollToText("Природа").click()
         waitForText("Назад")
 
         device.pressBack()
@@ -139,12 +139,34 @@ class AiAlbumBackNavigationTest {
     }
 
     private fun runAiAnalysisAndWait() {
-        // Opening the AI page does not automatically load cached results.
-        // Start the analysis explicitly; all fixture photos have cache rows,
-        // so this exercises the real UI flow without invoking ML inference.
-        waitForTextContains("Запустить ИИ-анализ").click()
-        waitForTextContains("Готово: распознано 3 фото")
+        // AiOrganizerPage can load its cache automatically. If it has not
+        // appeared yet, start analysis explicitly; never assume the button
+        // still has its initial label after LaunchedEffect(media) completes.
+        val cachedAlbums = device.wait(
+            Until.findObject(By.textContains("Умные альбомы")),
+            5_000
+        )
+        if (cachedAlbums == null) {
+            waitForTextContains("Запустить ИИ-анализ").click()
+            waitForTextContains("Готово: распознано 3 фото")
+        }
         waitForTextContains("Умные альбомы")
+        waitForTextContains("Отдых на море")
+    }
+
+    private fun scrollToText(text: String): UiObject2 {
+        repeat(5) {
+            val found = device.findObject(By.text(text))
+            if (found != null) return found
+            device.swipe(
+                device.displayWidth / 2,
+                device.displayHeight * 3 / 4,
+                device.displayWidth / 2,
+                device.displayHeight / 3,
+                12
+            )
+        }
+        return waitForText(text)
     }
 
     private fun waitForText(text: String): UiObject2 {
@@ -191,6 +213,65 @@ class AiAlbumBackNavigationTest {
                 assertTrue(cursor.moveToFirst())
                 assertEquals("All 3 AI cache rows must exist before MainActivity starts", 3, cursor.getInt(0))
             }
+        }
+    }
+
+
+    private fun seedCacheForVisibleFixture() {
+        // Re-query only after MainActivity's MediaStore refresh. This makes
+        // each cache signature identical to the MediaItem date/name snapshot
+        // already held by the app when AiOrganizerPage is opened.
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.DATE_ADDED,
+            MediaStore.MediaColumns.DATE_TAKEN
+        )
+        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? AND ${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        val args = arrayOf(
+            MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
+            "fp_back_test_%"
+        )
+        val databaseFile = context.getDatabasePath("ai_photo_labels.db")
+        SQLiteDatabase.openOrCreateDatabase(databaseFile.absolutePath, null).use { db ->
+            db.delete("labels", null, null)
+            var seeded = 0
+            context.contentResolver.query(
+                MediaStore.Files.getContentUri("external"),
+                projection,
+                selection,
+                args,
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                val takenColumn = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(nameColumn) ?: "Фото"
+                    val taken = if (takenColumn >= 0) cursor.getLong(takenColumn) else 0L
+                    val dateSeconds = if (taken > 0L) taken / 1000L else cursor.getLong(addedColumn)
+                    val uri = ContentUris.withAppendedId(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        cursor.getLong(idColumn)
+                    )
+                    val cached = ContentValues().apply {
+                        put("uri", uri.toString())
+                        put("signature", "$dateSeconds|$name")
+                        put("labels", "beach|sea")
+                        put("category", "Природа")
+                    }
+                    db.insertWithOnConflict(
+                        "labels",
+                        null,
+                        cached,
+                        SQLiteDatabase.CONFLICT_REPLACE
+                    )
+                    seeded++
+                }
+            } ?: error("Could not query refreshed MediaStore fixture")
+            assertEquals("All 3 refreshed fixture images must have matching AI cache rows", 3, seeded)
         }
     }
 
