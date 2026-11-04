@@ -5,9 +5,11 @@ import android.content.ContentValues
 import android.content.ContentUris
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.content.pm.PackageManager
 import android.os.Environment
 import android.provider.MediaStore
 import android.database.sqlite.SQLiteDatabase
+import androidx.core.content.ContextCompat
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -16,6 +18,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -47,8 +50,10 @@ class AiAlbumBackNavigationTest {
             Manifest.permission.READ_MEDIA_VIDEO
         )
         seedCachedAlbum()
+        assertFixtureVisibleToApp()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitForText("ФотоПорядок")
+        waitForTextContains("Показано:")
     }
 
     @After
@@ -99,6 +104,8 @@ class AiAlbumBackNavigationTest {
     @Test
     fun systemBackFromCategoryReturnsToAiAlbumList() {
         waitForTextContains("ИИ-альбомы").click()
+        waitForText("ИИ-фотограф")
+        waitForTextContains("Умные альбомы")
         waitForText("Природа").click()
         waitForText("Назад")
 
@@ -125,6 +132,7 @@ class AiAlbumBackNavigationTest {
 
     private fun openAiAlbum() {
         waitForTextContains("ИИ-альбомы").click()
+        waitForText("ИИ-фотограф")
         waitForTextContains("Умные альбомы")
         waitForTextContains("Отдых на море").click()
         waitForText("Назад")
@@ -140,6 +148,52 @@ class AiAlbumBackNavigationTest {
         val found = device.wait(Until.findObject(By.textContains(text)), 20_000)
         assertNotNull("Timed out waiting for text containing: $text", found)
         return found!!
+    }
+
+    private fun assertFixtureVisibleToApp() {
+        assertEquals(
+            "The app must have full image permission on the emulator",
+            PackageManager.PERMISSION_GRANTED,
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES)
+        )
+
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DISPLAY_NAME
+        )
+        val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
+        val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
+        val mediaCount = resolverCount(
+            MediaStore.Files.getContentUri("external"),
+            projection,
+            imageSelection,
+            imageArgs
+        )
+        assertEquals("MainActivity's MediaStore.Files query should see the 3 fixture photos", 3, mediaCount)
+
+        val dbFile = context.getDatabasePath("ai_photo_labels.db")
+        SQLiteDatabase.openDatabase(
+            dbFile.absolutePath,
+            null,
+            SQLiteDatabase.OPEN_READONLY
+        ).use { db ->
+            db.rawQuery("SELECT COUNT(*) FROM labels", null).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("All 3 AI cache rows must exist before MainActivity starts", 3, cursor.getInt(0))
+            }
+        }
+    }
+
+    private fun resolverCount(
+        uri: android.net.Uri,
+        projection: Array<String>,
+        selection: String,
+        selectionArgs: Array<String>
+    ): Int {
+        return context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use {
+            it.count
+        } ?: 0
     }
 
     private fun seedCachedAlbum() {
@@ -187,25 +241,27 @@ class AiAlbumBackNavigationTest {
                 }
             }
 
-            // Read back MediaStore's actual timestamps and IDs. This mirrors MainActivity's
-            // dateSeconds fallback exactly, even if a provider rounds DATE_TAKEN.
+            // Use the same Files collection, projection and timestamp fallback as MainActivity.
             val projection = arrayOf(
-                MediaStore.Images.Media._ID,
-                MediaStore.Images.Media.DISPLAY_NAME,
-                MediaStore.Images.Media.DATE_ADDED,
-                MediaStore.Images.Media.DATE_TAKEN
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.Files.FileColumns.MEDIA_TYPE,
+                MediaStore.Files.FileColumns.DISPLAY_NAME,
+                MediaStore.Files.FileColumns.DATE_ADDED,
+                MediaStore.MediaColumns.DATE_TAKEN
             )
+            val imageSelection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
+            val imageArgs = arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
             resolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Files.getContentUri("external"),
                 projection,
-                "${MediaStore.Images.Media.DISPLAY_NAME} LIKE ?",
-                arrayOf("fp_back_test_%"),
-                null
+                imageSelection,
+                imageArgs,
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
             )?.use { cursor ->
-                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-                val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-                val takenColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val addedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                val takenColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
                 while (cursor.moveToNext()) {
                     val name = cursor.getString(nameColumn)
                     val taken = cursor.getLong(takenColumn)
