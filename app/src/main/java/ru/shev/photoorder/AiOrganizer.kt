@@ -91,20 +91,35 @@ private val eventContextLabels = setOf(
 )
 
 private fun eventTitleFor(group: List<AiPhotoResult>): String {
-    val labels = group.flatMap { it.labels }.map { it.lowercase(Locale.ROOT) }.toSet()
-    val hasPeople = labels.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd", "group", "family", "friend") }
-    val hasOutdoor = labels.any { it in setOf("outdoor", "park", "grass", "tree", "forest", "nature", "landscape", "camping") }
-    val hasFood = labels.any { it in setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "grilling", "picnic", "cake", "drink") }
-    return when {
-        labels.any { it in setOf("barbecue", "grill", "grilling") } -> "Шашлыки и отдых"
-        labels.contains("picnic") -> "Пикник на природе"
-        hasPeople && hasOutdoor -> "Встреча на природе"
-        hasPeople -> "Встреча с друзьями"
-        hasFood -> "Угощение и застолье"
-        hasOutdoor -> "Прогулка на природе"
-        else -> group.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key
-            ?.takeIf { it !in setOf("Разное", "Не распознано", "Животные", "Природа и путешествия") }
-            ?: "Фотособытие"
+    // Count a theme once per photo, then compare its share across the whole album.
+    // This avoids letting one incidental label determine the title.
+    val categoryCounts = group.groupingBy { it.category }.eachCount()
+        .filterKeys { it !in setOf("Разное", "Не распознано") }
+    val dominant = categoryCounts.maxByOrNull { it.value } ?: return "Фотографии"
+    val share = dominant.value.toFloat() / group.size.coerceAtLeast(1)
+    if (share < 0.50f) return "Событие · смешанная серия"
+
+    // A label contributes once per photo. Require a meaningful share of the
+    // album before using a specific scene in its title; one stray prediction
+    // must not rename an otherwise unrelated group.
+    fun photoShare(aliases: Set<String>): Float =
+        group.count { photo -> photo.labels.any { it.lowercase(Locale.ROOT) in aliases } }
+            .toFloat() / group.size.coerceAtLeast(1)
+
+    val seaShare = photoShare(setOf("beach", "sea", "ocean", "coast", "seaside"))
+    val peopleShare = photoShare(setOf("person", "people", "human", "face", "portrait", "selfie", "family", "friend", "group"))
+    val foodShare = photoShare(setOf("food", "meal", "dish", "cuisine", "barbecue", "grill", "picnic"))
+
+    return when (dominant.key) {
+        "Люди" -> if (peopleShare >= 0.50f && foodShare >= 0.35f) "Семейный праздник" else "Встреча с близкими"
+        "Природа" -> if (seaShare >= 0.40f) "Отдых на море" else "Прогулка на природе"
+        "Город и архитектура" -> "Городская прогулка"
+        "Путешествия" -> "Путешествие"
+        "Еда" -> "Угощение и застолье"
+        "Животные" -> "Животные"
+        "Транспорт" -> "Поездки и транспорт"
+        "Документы и скриншоты" -> "Документы и скриншоты"
+        else -> "Фотографии"
     }
 }
 
@@ -126,13 +141,27 @@ internal fun buildAiEventAlbums(results: List<AiPhotoResult>): List<AiEventAlbum
             val sameDay = dayFormat.format(Date(previous.media.dateSeconds * 1000)) ==
                 dayFormat.format(Date(photo.media.dateSeconds * 1000))
             val gapSeconds = (photo.media.dateSeconds - previous.media.dateSeconds).coerceAtLeast(0L)
-            val currentContext = current.flatMap { it.labels }
+            // Time proximity alone is not enough: two unrelated subjects
+            // photographed on the same day must not become one album.
+            // Compare the new photo with the recent scene, not the entire day's
+            // accumulated labels, so an old incidental label cannot bridge groups.
+            val recentContext = current.takeLast(3).flatMap { it.labels }
                 .map { it.lowercase(Locale.ROOT) }.toSet().intersect(eventContextLabels)
             val photoContext = photo.labels.map { it.lowercase(Locale.ROOT) }.toSet()
                 .intersect(eventContextLabels)
-            val sharedSceneContext = currentContext.intersect(photoContext).isNotEmpty()
-            val belongsToSameSession = gapSeconds <= 4 * 60 * 60L ||
-                (gapSeconds <= 8 * 60 * 60L && sharedSceneContext)
+            val sharedContext = recentContext.intersect(photoContext)
+            val strongSceneAnchors = setOf(
+                "beach", "sea", "ocean", "coast", "seaside", "camping", "picnic",
+                "barbecue", "grill", "wedding", "birthday", "celebration", "party",
+                "cake", "tent", "concert", "museum"
+            )
+            val hasStrongSceneAnchor = sharedContext.any { it in strongSceneAnchors }
+            val hasMultipleSharedClues = sharedContext.size >= 2
+            val sameReliableCategory = photo.category == previous.category &&
+                photo.category !in setOf("Разное", "Не распознано") && gapSeconds <= 90 * 60L
+            val semanticMatch = hasStrongSceneAnchor || hasMultipleSharedClues || sameReliableCategory
+            val belongsToSameSession = (gapSeconds <= 4 * 60 * 60L && semanticMatch) ||
+                (gapSeconds <= 8 * 60 * 60L && hasStrongSceneAnchor)
 
             if (sameDay && belongsToSameSession) current.add(photo)
             else groups.add(mutableListOf(photo))
@@ -207,6 +236,7 @@ internal fun AiOrganizerPage(
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var previewPhoto by remember { mutableStateOf<AiPhotoResult?>(null) }
 
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
@@ -225,6 +255,8 @@ internal fun AiOrganizerPage(
     // nested album/category; only a second Back returns to the main screen.
     androidx.activity.compose.BackHandler(enabled = true) {
         when {
+            // Close the enlarged preview first, then return from the album.
+            previewPhoto != null -> previewPhoto = null
             selectedAlbum != null -> selectedAlbum = null
             selectedCategory != null -> selectedCategory = null
             else -> onExit()
@@ -330,14 +362,25 @@ internal fun AiOrganizerPage(
                 )
                 TextButton(onClick = { selectedCategory = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
-                    AsyncImage(
-                        model = photo.media.uri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        AsyncImage(
+                            model = photo.media.uri,
+                            contentDescription = photo.media.name,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(3.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         } else if (selectedAlbum != null) {
@@ -353,18 +396,47 @@ internal fun AiOrganizerPage(
                 )
                 TextButton(onClick = { selectedAlbum = null }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)) { Text("Назад") }
             }
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
-                    AsyncImage(
-                        model = photo.media.uri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(150.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { previewPhoto = photo },
+                        colors = CardDefaults.cardColors(containerColor = palette.card),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        AsyncImage(
+                            model = photo.media.uri,
+                            contentDescription = photo.media.name,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(3.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         } else if (results.isEmpty() && !analyzing) {
             Text("После анализа здесь появятся альбомы, названные по содержимому фотографий.", color = palette.muted, fontSize = 12.sp)
         }
+    }
+
+    previewPhoto?.let { photo ->
+        AlertDialog(
+            onDismissRequest = { previewPhoto = null },
+            title = { Text(photo.media.name, maxLines = 1) },
+            text = {
+                AsyncImage(
+                    model = photo.media.uri,
+                    contentDescription = photo.media.name,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
+                    contentScale = ContentScale.Fit
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { previewPhoto = null }) { Text("Закрыть") }
+            }
+        )
     }
 }

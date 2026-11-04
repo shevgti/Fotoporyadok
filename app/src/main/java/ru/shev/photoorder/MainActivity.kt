@@ -360,6 +360,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Text("Настройки", modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = palette.text)
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable {
                             if (Build.VERSION.SDK_INT >= 33 &&
@@ -385,8 +386,10 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold
                     )
                 }
+                Spacer(modifier = Modifier.height(16.dp))
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                         .clip(RoundedCornerShape(16.dp)).background(palette.primary)
                         .clickable { showThemePicker = !showThemePicker }
                         .padding(horizontal = 14.dp, vertical = 13.dp)
@@ -437,7 +440,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                 Spacer(modifier = Modifier.weight(1f))
                 HorizontalDivider(color = palette.muted.copy(alpha = 0.25f), modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                 Text("ФотоПорядок  •  " + BuildConfig.VERSION_NAME, modifier = Modifier.padding(horizontal = 18.dp, vertical = 5.dp), color = palette.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
                         modifier = Modifier.fillMaxWidth().shadow(5.dp, RoundedCornerShape(10.dp))
                             .clip(RoundedCornerShape(16.dp))
@@ -463,7 +466,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                             fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(9.dp))
                                 .clip(RoundedCornerShape(16.dp)).background(palette.card)
@@ -729,7 +732,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     showExitDialog = false
-                    (context as? Activity)?.finish()
+                    (context as? Activity)?.finishAndRemoveTask()
                 }) { Text("Выйти") }
             },
             dismissButton = {
