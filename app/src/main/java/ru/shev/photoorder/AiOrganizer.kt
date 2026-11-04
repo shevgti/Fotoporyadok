@@ -66,15 +66,18 @@ private fun russianLabel(label: String): String {
 }
 
 private fun categoryForLabels(labels: List<String>): String {
-    val all = labels.map { it.lowercase(Locale.ROOT) }
+    val all = labels.map { it.lowercase(Locale.ROOT) }.toSet()
+    val animalSignals = all.intersect(setOf("dog", "cat", "pet", "animal", "bird", "horse", "wildlife", "mammal", "reptile", "fish"))
+    // ML Kit may return a stray "Dog" label for a person or campsite.
+    // One animal label is not enough to make a categorical claim.
     return when {
-        all.any { it in setOf("dog", "cat", "pet", "animal", "bird", "horse", "wildlife", "mammal", "reptile", "fish") } -> "Животные"
-        all.any { it in setOf("beach", "ocean", "sea", "lake", "mountain", "landscape", "sky", "forest", "tree", "nature", "waterfall", "flower", "plant") } -> "Природа и путешествия"
+        animalSignals.size >= 2 -> "Животные"
+        all.any { it in setOf("screenshot", "document", "text", "poster", "paper") } -> "Документы и скриншоты"
+        all.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd") } -> "Люди"
         all.any { it in setOf("car", "vehicle", "automobile", "truck", "motorcycle", "bicycle", "airplane", "train", "boat") } -> "Транспорт"
         all.any { it in setOf("food", "dish", "cuisine", "fruit", "vegetable", "dessert", "cake", "meal", "drink") } -> "Еда"
         all.any { it in setOf("building", "architecture", "house", "church", "tower", "bridge", "city", "skyscraper", "monument") } -> "Город и архитектура"
-        all.any { it in setOf("person", "people", "human", "face", "portrait", "selfie", "crowd") } -> "Люди"
-        all.any { it in setOf("document", "text", "screenshot", "poster", "paper") } -> "Документы и скриншоты"
+        all.any { it in setOf("beach", "ocean", "sea", "lake", "mountain", "landscape", "forest", "tree", "waterfall", "flower", "plant") } -> "Природа и путешествия"
         else -> "Разное"
     }
 }
@@ -107,10 +110,8 @@ internal fun buildAiEventAlbums(results: List<AiPhotoResult>): List<AiEventAlbum
         val repeatedLabels = group.flatMap { it.labels }.groupingBy { it }.eachCount().values.maxOrNull() ?: 0
         (categoryCounts.values.maxOrNull() ?: 0) >= 2 || repeatedLabels >= 2
     }.map { group ->
-        val topLabels = group.flatMap { it.labels }.groupingBy { it }.eachCount()
-            .entries.sortedByDescending { it.value }.take(2).map { it.key }
         val category = group.groupingBy { it.category }.eachCount().maxByOrNull { it.value }?.key ?: "Фотографии"
-        val subject = topLabels.takeIf { it.isNotEmpty() }?.joinToString(" и ") { russianLabel(it) } ?: category
+        val subject = category.takeIf { it != "Разное" && it != "Не распознано" } ?: "Фотографии"
         val date = dateFormat.format(Date(group.first().media.dateSeconds * 1000))
         AiEventAlbum(group.first().media.uri.toString(), "$subject · $date", date, group)
     }.sortedByDescending { it.photos.maxOfOrNull { photo -> photo.media.dateSeconds } ?: 0L }
@@ -130,7 +131,7 @@ internal fun analyzePhotosWithAi(context: Context, media: List<MediaItem>, onPro
             val result = if (cached != null) AiPhotoResult(item, cached.labels, cached.category) else {
                 try {
                     val image = InputImage.fromFilePath(context, item.uri)
-                    val labels = Tasks.await(labeler.process(image)).filter { it.confidence >= 0.48f }
+                    val labels = Tasks.await(labeler.process(image)).filter { it.confidence >= 0.62f }
                         .sortedByDescending { it.confidence }.take(6).map { it.text }
                     val category = categoryForLabels(labels)
                     cache.put(uriText, signature, labels, category)
@@ -147,6 +148,18 @@ internal fun analyzePhotosWithAi(context: Context, media: List<MediaItem>, onPro
     return results
 }
 
+private fun loadCachedAiResults(context: Context, media: List<MediaItem>): List<AiPhotoResult> {
+    val cache = AiLabelCache(context)
+    return try {
+        media.asSequence().filterNot { it.isVideo }.mapNotNull { item ->
+            val signature = item.dateSeconds.toString() + "|" + item.name
+            cache.get(item.uri.toString(), signature)?.let { AiPhotoResult(item, it.labels, it.category) }
+        }.toList()
+    } finally {
+        cache.close()
+    }
+}
+
 @Composable
 internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -160,6 +173,23 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
     var status by remember { mutableStateOf<String?>(null) }
     var selectedAlbum by remember { mutableStateOf<AiEventAlbum?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(media) {
+        if (media.isNotEmpty() && results.isEmpty()) {
+            val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                loadCachedAiResults(context, media)
+            }
+            if (cached.isNotEmpty()) {
+                results = cached
+                albums = buildAiEventAlbums(cached)
+                status = "Загружены сохранённые результаты анализа: ${cached.size} фото, альбомов ${albums.size}."
+            }
+        }
+    }
+
+    androidx.activity.compose.BackHandler(enabled = selectedAlbum != null || selectedCategory != null) {
+        if (selectedAlbum != null) selectedAlbum = null else selectedCategory = null
+    }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("ИИ-фотограф", fontSize = 25.sp, color = palette.text, fontWeight = FontWeight.Bold)
@@ -203,8 +233,22 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
                     Card(modifier = Modifier.fillMaxWidth().clickable { selectedAlbum = album },
                         colors = CardDefaults.cardColors(containerColor = palette.card), shape = RoundedCornerShape(18.dp)) {
                         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            AsyncImage(model = album.photos.first().media.uri, contentDescription = album.title,
-                                modifier = Modifier.fillMaxWidth().height(130.dp), contentScale = ContentScale.Crop)
+                            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                                columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                                modifier = Modifier.fillMaxWidth().height(132.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                userScrollEnabled = false
+                            ) {
+                                items(album.photos.take(4), key = { it.media.uri.toString() }) { photo ->
+                                    AsyncImage(
+                                        model = photo.media.uri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1.45f),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
                             Text(album.title, color = palette.text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Text("${album.photos.size} фотографий · ${album.dateLabel}", color = palette.muted, fontSize = 11.sp)
                         }
@@ -238,13 +282,12 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
             }
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(categoryPhotos, key = { it.media.uri.toString() }) { photo ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        AsyncImage(model = photo.media.uri, contentDescription = null, modifier = Modifier.height(86.dp).weight(1f), contentScale = ContentScale.Crop)
-                        Column(Modifier.weight(1f)) {
-                            Text(photo.labels.joinToString(", ").ifBlank { "Нет дополнительных меток" }, color = palette.text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                            Text(SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date(photo.media.dateSeconds * 1000)), color = palette.muted, fontSize = 10.sp)
-                        }
-                    }
+                    AsyncImage(
+                        model = photo.media.uri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(150.dp),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
         } else if (selectedAlbum != null) {
@@ -254,13 +297,12 @@ internal fun AiOrganizerPage(media: List<MediaItem>, palette: AppTheme, modifier
             }
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(selectedAlbum!!.photos, key = { it.media.uri.toString() }) { photo ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        AsyncImage(model = photo.media.uri, contentDescription = null, modifier = Modifier.height(86.dp).weight(1f), contentScale = ContentScale.Crop)
-                        Column(Modifier.weight(1f)) {
-                            Text(photo.category, color = palette.text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                            Text(photo.labels.joinToString(", "), color = palette.muted, fontSize = 10.sp)
-                        }
-                    }
+                    AsyncImage(
+                        model = photo.media.uri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(150.dp),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
         } else if (results.isEmpty() && !analyzing) {
