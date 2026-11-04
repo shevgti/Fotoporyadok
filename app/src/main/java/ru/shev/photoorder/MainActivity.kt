@@ -233,7 +233,6 @@ class MainActivity : ComponentActivity() {
     private var notificationUpdateInfo by mutableStateOf<UpdateInfo?>(null)
 
     private fun readNotificationUpdate(intent: Intent?): UpdateInfo? {
-        if (!getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE).getBoolean("auto_update_enabled", false)) return null
         if (intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) != true) return null
         val versionCode = intent.getIntExtra(EXTRA_UPDATE_VERSION_CODE, 0)
         val versionName = intent.getStringExtra(EXTRA_UPDATE_VERSION_NAME).orEmpty()
@@ -248,10 +247,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         notificationUpdateInfo = readNotificationUpdate(intent)
-        val automaticUpdatesEnabled = getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
-            .getBoolean("auto_update_enabled", false)
-        openUpdateDialogRequest = automaticUpdatesEnabled &&
-            (intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false)
+        openUpdateDialogRequest = intent?.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false) ?: false
         UpdateCheckWorker.schedule(this)
         // Create the channel at app startup so Android/HyperOS can expose
         // the app's notification controls even before the first notification.
@@ -294,9 +290,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val automaticUpdatesEnabled = getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
-            .getBoolean("auto_update_enabled", false)
-        if (automaticUpdatesEnabled && intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
+        if (intent.getBooleanExtra(EXTRA_OPEN_UPDATE_DIALOG, false)) {
             notificationUpdateInfo = readNotificationUpdate(intent)
             openUpdateDialogRequest = notificationUpdateInfo != null
         }
