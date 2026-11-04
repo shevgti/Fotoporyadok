@@ -230,7 +230,7 @@ internal fun AiOrganizerPage(
     palette: AppTheme,
     modifier: Modifier = Modifier,
     onExit: () -> Unit,
-    onBackActionChanged: (((() -> Unit)?) -> Unit)
+    onBackActionChanged: ((() -> Unit)?) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
