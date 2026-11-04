@@ -160,7 +160,7 @@ internal class UpdateCheckWorker(
             if (FAST_TEST_MODE) {
                 // Replace the normal periodic schedule with a temporary 2-minute
                 // one-time chain. Android may still defer execution in Doze/HyperOS.
-                manager.cancelUniquePeriodicWork(UNIQUE_WORK)
+                manager.cancelUniqueWork(UNIQUE_WORK)
                 manager.enqueueUniqueWork(
                     IMMEDIATE_WORK,
                     ExistingWorkPolicy.KEEP,
