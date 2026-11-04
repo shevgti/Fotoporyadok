@@ -30,11 +30,8 @@ internal class UpdateCheckWorker(
     override suspend fun doWork(): Result {
         saveStatus("Фоновая проверка выполняется…")
         val appPrefs = applicationContext.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
-        if (!appPrefs.getBoolean("auto_update_enabled", false)) {
-            NotificationManagerCompat.from(applicationContext).cancel(NOTIFICATION_ID)
-            saveStatus("Автоматические обновления выключены: фоновые уведомления отключены")
-            return Result.success()
-        }
+        // Update discovery and notifications remain active even when automatic
+        // downloading/installation is disabled. The preference controls only installation.
         return try {
             val update = AppUpdater.check(BuildConfig.VERSION_CODE) ?: run {
                 saveStatus("Новых версий не найдено")
@@ -162,12 +159,9 @@ internal class UpdateCheckWorker(
         fun schedule(context: Context) {
             val prefs = context.getSharedPreferences("photoorder_prefs", Context.MODE_PRIVATE)
             val manager = WorkManager.getInstance(context)
-            if (!prefs.getBoolean("auto_update_enabled", false)) {
-                manager.cancelUniqueWork(UNIQUE_WORK)
-                manager.cancelUniqueWork(IMMEDIATE_WORK)
-                NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
-                return
-            }
+            // Always look for releases in the background. auto_update_enabled is
+            // intentionally not consulted here: it only controls silent installation
+            // in MainActivity, not whether users hear about a new release.
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
