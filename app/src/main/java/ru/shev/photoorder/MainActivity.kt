@@ -125,12 +125,22 @@ internal data class AppTheme(
     val background: Color, val backgroundEnd: Color,
     val surface: Color, val card: Color,
     val primary: Color, val secondary: Color, val accent: Color,
-    val muted: Color, val text: Color, val onPrimary: Color
+    val muted: Color, val text: Color, val onPrimary: Color,
+    val isDark: Boolean, val wallpaperUrl: String
 )
 
+// Фотофоны взяты с PxHere и опубликованы под CC0 / Public Domain.
 private val appThemes = listOf(
-    AppTheme(0, "Apple — светлая", Color(0xFFF2F2F7), Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFFFFFFFF), Color(0xFF007AFF), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF8E8E93), Color(0xFF1C1C1E), Color.White),
-    AppTheme(1, "Apple — тёмная", Color(0xFF000000), Color(0xFF1C1C1E), Color(0xFF1C1C1E), Color(0xFF2C2C2E), Color(0xFF0A84FF), Color(0xFF64D2FF), Color(0xFF0A84FF), Color(0xFF8E8E93), Color(0xFFF5F5F7), Color.White)
+    AppTheme(0, "Apple — Сьерра", Color(0xFFF2F2F7), Color.White, Color(0xFFF8F8FC), Color.White, Color(0xFF007AFF), Color(0xFF5AC8FA), Color(0xFF007AFF), Color(0xFF8E8E93), Color(0xFF1C1C1E), Color.White, false, "https://c.pxhere.com/photos/18/5e/teton_mountains_wyoming_trees_forest_woods_river_water-1119978.jpg!d"),
+    AppTheme(1, "Apple — Ночь", Color(0xFF090B12), Color(0xFF171B27), Color(0xFF171B27), Color(0xFF252A38), Color(0xFF0A84FF), Color(0xFF64D2FF), Color(0xFF0A84FF), Color(0xFF969EAE), Color(0xFFF5F5F7), Color.White, true, "https://c.pxhere.com/photos/59/e8/beach_clouds_conifer_daylight_docks_foliage_forest_island-1068766.jpg!d"),
+    AppTheme(2, "Океан", Color(0xFF071C2C), Color(0xFF123B54), Color(0xFF123B54), Color(0xFF1B4A64), Color(0xFF28B8D5), Color(0xFF72DCEB), Color(0xFF28B8D5), Color(0xFF9BBAC8), Color(0xFFF1FBFF), Color(0xFF06202B), true, "https://c.pxhere.com/photos/54/6b/trees_sky_mountain_clouds_forest_landscape_outdoor_turquoise-106152.jpg!d"),
+    AppTheme(3, "Туманный лес", Color(0xFFE9EEF0), Color(0xFFF8FAFB), Color(0xFFF7FAFB), Color.White, Color(0xFF587C86), Color(0xFF9BB8B9), Color(0xFF587C86), Color(0xFF74858A), Color(0xFF18282D), Color.White, false, "https://c.pxhere.com/photos/00/cb/lake_forest_mountain_foggy_landscape_nature_water_evergreens-595654.jpg!d"),
+    AppTheme(4, "Золотой час", Color(0xFF201A1B), Color(0xFF3B2B2B), Color(0xFF382B2B), Color(0xFF493535), Color(0xFFFF9A62), Color(0xFFFFC078), Color(0xFFFF9A62), Color(0xFFC3A9A1), Color(0xFFFFF4EE), Color(0xFF2A1712), true, "https://c.pxhere.com/photos/6b/5a/lake_reflection_mountains_landscape_calm_nature_water_peaceful-676105.jpg!d"),
+    AppTheme(5, "Северное сияние", Color(0xFF101C2C), Color(0xFF1B3045), Color(0xFF1B3045), Color(0xFF29445A), Color(0xFF58C7B7), Color(0xFF86E0D3), Color(0xFF58C7B7), Color(0xFF9CB6C4), Color(0xFFF0FBFF), Color(0xFF09211F), true, "https://c.pxhere.com/photos/5f/66/mountain_sky_clouds_outdoors_tranquil_high_weather_meteorology-1015434.jpg!d"),
+    AppTheme(6, "Тропики", Color(0xFFF1F5EA), Color.White, Color(0xFFF9FCF4), Color.White, Color(0xFF218C70), Color(0xFF7BC9A7), Color(0xFF218C70), Color(0xFF7C8D7F), Color(0xFF18372C), Color.White, false, "https://c.pxhere.com/photos/d4/19/palm_trees_tropical_houses_sky_clouds_city_town_sunset-892422.jpg!d"),
+    AppTheme(7, "Альпийский берег", Color(0xFFEAF2F8), Color.White, Color(0xFFF7FBFF), Color.White, Color(0xFF367BAA), Color(0xFF82B8D8), Color(0xFF367BAA), Color(0xFF788C9A), Color(0xFF172B3A), Color.White, false, "https://c.pxhere.com/photos/45/0c/mountains_sea_water_buildings_city_vacation_europe_travel-654439.jpg!d"),
+    AppTheme(8, "Морской закат", Color(0xFFF6ECE7), Color(0xFFFFF9F5), Color(0xFFFFF8F3), Color.White, Color(0xFFD36E58), Color(0xFFFFB17B), Color(0xFFD36E58), Color(0xFF9A8177), Color(0xFF38251F), Color.White, false, "https://c.pxhere.com/photos/a4/fc/photo-111696.jpg!d"),
+    AppTheme(9, "Монохром", Color(0xFF151515), Color(0xFF292929), Color(0xFF292929), Color(0xFF383838), Color(0xFFB7B7B7), Color(0xFFE0E0E0), Color(0xFFB7B7B7), Color(0xFF9B9B9B), Color(0xFFF5F5F5), Color(0xFF181818), true, "https://c.pxhere.com/photos/b0/82/beach_black_and_white_boat_bridge_dawn_dock_dusk_evening-1130756.jpg!d")
 )
 
 
