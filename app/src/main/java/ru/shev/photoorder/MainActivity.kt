@@ -1097,7 +1097,7 @@ private fun PhotoOrderScreen(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp)
                 .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
