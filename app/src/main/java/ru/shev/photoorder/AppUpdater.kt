@@ -41,7 +41,7 @@ internal object AppUpdater {
             if (release.optBoolean("draft") || release.optBoolean("prerelease")) return@withContext null
             val tag = release.optString("tag_name")
             val versionName = tag.removePrefix("v")
-            val versionCode = Regex("""(?m)^versionCode:\s*(\d+)\s*$""")
+            val versionCode = Regex("""(?m)^versionCode:\\s*(\\d+)\\s*$""")
                 .find(release.optString("body"))?.groupValues?.get(1)?.toIntOrNull()
                 ?: 0
             val assets = release.optJSONArray("assets") ?: return@withContext null
@@ -63,7 +63,11 @@ internal object AppUpdater {
         }
     }
 
-    suspend fun downloadAndInstall(context: Context, update: UpdateInfo): Boolean {
+    suspend fun downloadAndInstall(
+        context: Context,
+        update: UpdateInfo,
+        onProgress: (Long, Long) -> Unit
+    ): Boolean {
         val canInstall = withContext(Dispatchers.Main) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                 !context.packageManager.canRequestPackageInstalls()
@@ -79,19 +83,62 @@ internal object AppUpdater {
         if (!canInstall) return false
 
         withContext(Dispatchers.IO) {
-            val directory = File(context.cacheDir, "updates").apply { mkdirs() }
+            val directory = File(context.cacheDir, "updates").apply {
+                if (!exists() && !mkdirs()) error("Не удалось создать папку для обновления")
+            }
             val apk = File(directory, APK_NAME)
+            val partial = File(directory, "$APK_NAME.part")
+            partial.delete()
+
             val connection = (URL(update.downloadUrl).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = true
-                connectTimeout = 20000
-                readTimeout = 60000
+                connectTimeout = 30000
+                readTimeout = 90000
                 setRequestProperty("User-Agent", "FotoPoryadok-Android")
+                setRequestProperty("Accept", "application/octet-stream")
+                setRequestProperty("Cache-Control", "no-cache")
             }
             try {
-                if (connection.responseCode !in 200..299) error("Не удалось скачать APK")
-                connection.inputStream.use { input ->
-                    apk.outputStream().use { output -> input.copyTo(output) }
+                val response = connection.responseCode
+                if (response !in 200..299) {
+                    error("Сервер загрузки ответил: HTTP $response")
                 }
+                val total = connection.contentLengthLong
+                if (total == 0L) error("Сервер вернул пустой файл обновления")
+
+                var downloaded = 0L
+                var lastReported = 0L
+                connection.inputStream.buffered().use { input ->
+                    partial.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                            downloaded += count
+                            if (downloaded - lastReported >= 256 * 1024) {
+                                lastReported = downloaded
+                                withContext(Dispatchers.Main) { onProgress(downloaded, total) }
+                            }
+                        }
+                    }
+                }
+                if (downloaded < 2L) error("Скачанный файл слишком маленький")
+                if (total > 0L && downloaded != total) {
+                    error("Загрузка оборвалась: получено $downloaded из $total байт")
+                }
+                val signature = partial.inputStream().use { input ->
+                    byteArrayOf(input.read().toByte(), input.read().toByte())
+                }
+                if (signature[0] != 0x50.toByte() || signature[1] != 0x4B.toByte()) {
+                    error("Сервер вернул не APK-файл. Проверь соединение и повтори попытку")
+                }
+                if (apk.exists() && !apk.delete()) error("Не удалось заменить старый файл обновления")
+                if (!partial.renameTo(apk)) error("Не удалось сохранить скачанный APK")
+                withContext(Dispatchers.Main) { onProgress(downloaded, if (total > 0) total else downloaded) }
+            } catch (error: Exception) {
+                partial.delete()
+                throw error
             } finally {
                 connection.disconnect()
             }
