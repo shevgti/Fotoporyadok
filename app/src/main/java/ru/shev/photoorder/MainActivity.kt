@@ -134,6 +134,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1172,18 +1173,59 @@ private fun PhotoOrderScreen(
                 }
             }
         }
-        Row(
+        BoxWithConstraints(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp)
-                .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .height(42.dp)
+                .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp)
         ) {
-            listOf("⌂  Главная", "✨  ИИ-альбомы").forEachIndexed { index, label ->
+            // Индикатор следует за реальным смещением Pager, поэтому цвет
+            // перетекает за пальцем и при свайпе, и при нажатии на вкладку.
+            val pageProgress = (pagePagerState.currentPage + pagePagerState.currentPageOffsetFraction)
+                .coerceIn(0f, 1f)
+            val indicatorWidth = (maxWidth - 4.dp) / 2f
+            val indicatorTravel = (maxWidth + 4.dp) / 2f
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(indicatorWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        translationX = indicatorTravel.toPx() * pageProgress
+                        val liquidStretch = abs(pagePagerState.currentPageOffsetFraction)
+                        scaleX = 1f + liquidStretch * 0.18f
+                    }
+                    .shadow(5.dp, RoundedCornerShape(13.dp))
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(palette.secondary, palette.primary, palette.primary.copy(alpha = 0.94f))
+                        )
+                    )
+            ) {
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-                         .background(if (selectedPage == index) palette.primary else Color.Transparent)
-                        .clickable { scope.launch { pagePagerState.animateScrollToPage(index) } }.padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) { Text(label, color = if (selectedPage == index) Color.White else palette.muted, fontSize = 12.sp, fontWeight = if (selectedPage == index) FontWeight.SemiBold else FontWeight.Normal) }
+                    modifier = Modifier.fillMaxWidth().height(1.dp).align(Alignment.TopCenter)
+                        .background(Color.White.copy(alpha = 0.34f))
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf("⌂  Главная", "✨  ИИ-альбомы").forEachIndexed { index, label ->
+                    val active = pageProgress.roundToInt() == index
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                            .clickable { scope.launch { pagePagerState.animateScrollToPage(index) } },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            label,
+                            color = if (active) Color.White else palette.muted,
+                            fontSize = 12.sp,
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
             }
         }
     }
