@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.database.ContentObserver
@@ -117,8 +118,6 @@ internal data class MediaItem(
     val albumName: String
 )
 
-private data class AppNotificationRecord(val id: Long, val title: String, val message: String, val time: Long, val type: String, val read: Boolean)
-
 private enum class MediaSort { NEWEST, OLDEST }
 
 internal data class AppTheme(
@@ -222,8 +221,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var showAboutDialog by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(appNotificationsEnabled(context)) }
-    var showNotificationCenter by remember { mutableStateOf(false) }
-    var notificationHistory by remember { mutableStateOf(loadNotificationHistory(context)) }
     var media by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var hasPermission by remember { mutableStateOf(hasMediaPermission(context)) }
     var loading by remember { mutableStateOf(false) }
@@ -242,8 +239,10 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     var pendingSortFolders by remember { mutableStateOf<List<SmartSortFolder>>(emptyList()) }
     val scope = rememberCoroutineScope()
 
+    // The AI albums screen owns Back while it is visible so it can first
+    // close an opened album/category instead of letting the Activity exit.
     androidx.activity.compose.BackHandler(
-        enabled = selectedPage != 0 || selectedViewerIndex != null || drawerState.isOpen
+        enabled = (selectedPage != 0 && selectedPage != 1) || selectedViewerIndex != null || drawerState.isOpen
     ) {
         when {
             selectedViewerIndex != null -> selectedViewerIndex = null
@@ -384,21 +383,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                     Text(
                         if (notificationsEnabled) "🔔  Уведомления включены" else "🔕  Включить уведомления",
                         color = palette.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold
-                    )
-                }
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp)
-                        .clip(RoundedCornerShape(16.dp)).background(palette.card)
-                        .clickable {
-                            notificationHistory = loadNotificationHistory(context)
-                            showNotificationCenter = true
-                        }
-                        .padding(horizontal = 14.dp, vertical = 13.dp)
-                ) {
-                    val unread = notificationHistory.count { !it.read }
-                    Text(
-                        "📬  Центр уведомлений" + if (unread > 0) "  ·  $unread" else "",
-                        color = palette.text, fontSize = 14.sp, fontWeight = FontWeight.Bold
                     )
                 }
                 Box(
@@ -580,7 +564,8 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             AiOrganizerPage(
                 media = media,
                 palette = palette,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onExit = { selectedPage = 0 }
             )
         } else if (!hasPermission) {
             Card(
@@ -677,15 +662,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                         ) {
                             Column {
                                 if (item.isVideo) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1f)
-                                            .background(palette.surface),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("▶  ВИДЕО", fontWeight = FontWeight.SemiBold, color = palette.accent)
-                                    }
+                                    VideoThumbnail(item = item, palette = palette)
                                 } else {
                                     AsyncImage(
                                         model = item.uri,
@@ -726,54 +703,6 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
             }
         }
     }
-    }
-
-    if (showNotificationCenter) {
-        AlertDialog(
-            onDismissRequest = { showNotificationCenter = false },
-            title = { Text("Центр уведомлений") },
-            text = {
-                if (notificationHistory.isEmpty()) {
-                    Text("Пока уведомлений нет. Здесь будут появляться сообщения об обновлениях и важных событиях ФотоПорядка.")
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        lazyItems(notificationHistory, key = { it.id }) { entry ->
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (entry.read) palette.surface else palette.card)
-                                    .clickable {
-                                        notificationHistory = markNotificationRead(context, entry.id)
-                                    }
-                                    .padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(entry.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = palette.text, fontSize = 14.sp)
-                                    if (!entry.read) Text("НОВОЕ", color = palette.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Text(entry.message, color = palette.text, fontSize = 12.sp)
-                                Text(
-                                    SimpleDateFormat("dd.MM.yyyy · HH:mm", Locale("ru")).format(Date(entry.time)),
-                                    color = palette.muted, fontSize = 10.sp
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    notificationHistory = markAllNotificationsRead(context)
-                }, enabled = notificationHistory.any { !it.read }) { Text("Прочитать все") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotificationCenter = false }) { Text("Закрыть") }
-            }
-        )
     }
 
     if (showAboutDialog) {
@@ -1048,70 +977,6 @@ private fun SortButton(label: String, selected: Boolean, palette: AppTheme, onCl
 
 
 
-private const val NOTIFICATION_HISTORY_PREFS = "photoorder_notification_history"
-private const val NOTIFICATION_HISTORY_KEY = "items"
-private const val MAX_NOTIFICATION_HISTORY = 100
-
-private fun loadNotificationHistory(context: Context): List<AppNotificationRecord> {
-    val raw = context.getSharedPreferences(NOTIFICATION_HISTORY_PREFS, Context.MODE_PRIVATE)
-        .getString(NOTIFICATION_HISTORY_KEY, "[]") ?: "[]"
-    return runCatching {
-        val array = org.json.JSONArray(raw)
-        (0 until array.length()).mapNotNull { index ->
-            val item = array.optJSONObject(index) ?: return@mapNotNull null
-            AppNotificationRecord(
-                id = item.optLong("id"),
-                title = item.optString("title"),
-                message = item.optString("message"),
-                time = item.optLong("time"),
-                type = item.optString("type", "general"),
-                read = item.optBoolean("read", false)
-            )
-        }.sortedByDescending { it.time }
-    }.getOrDefault(emptyList())
-}
-
-private fun saveNotificationHistory(context: Context, records: List<AppNotificationRecord>) {
-    val array = org.json.JSONArray()
-    records.take(MAX_NOTIFICATION_HISTORY).forEach { record ->
-        array.put(org.json.JSONObject().apply {
-            put("id", record.id)
-            put("title", record.title)
-            put("message", record.message)
-            put("time", record.time)
-            put("type", record.type)
-            put("read", record.read)
-        })
-    }
-    context.getSharedPreferences(NOTIFICATION_HISTORY_PREFS, Context.MODE_PRIVATE)
-        .edit().putString(NOTIFICATION_HISTORY_KEY, array.toString()).apply()
-}
-
-private fun markNotificationRead(context: Context, id: Long): List<AppNotificationRecord> {
-    val updated = loadNotificationHistory(context).map { if (it.id == id) it.copy(read = true) else it }
-    saveNotificationHistory(context, updated)
-    return updated
-}
-
-private fun markAllNotificationsRead(context: Context): List<AppNotificationRecord> {
-    val updated = loadNotificationHistory(context).map { it.copy(read = true) }
-    saveNotificationHistory(context, updated)
-    return updated
-}
-
-private fun recordAppNotification(context: Context, title: String, message: String, notificationId: Int) {
-    val existing = loadNotificationHistory(context)
-    val record = AppNotificationRecord(
-        id = System.currentTimeMillis(),
-        title = title,
-        message = message,
-        time = System.currentTimeMillis(),
-        type = if (notificationId == 1002) "update" else "general",
-        read = false
-    )
-    saveNotificationHistory(context, listOf(record) + existing)
-}
-
 private const val APP_NOTIFICATION_CHANNEL = "photoorder_updates"
 
 private fun appNotificationsEnabled(context: Context): Boolean {
@@ -1136,7 +1001,6 @@ private fun createAppNotificationChannel(context: Context) {
 }
 
 private fun postAppNotification(context: Context, title: String, message: String, notificationId: Int) {
-    recordAppNotification(context, title, message, notificationId)
     if (!appNotificationsEnabled(context)) return
     createAppNotificationChannel(context)
     val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -1235,6 +1099,48 @@ private fun loadMedia(context: Context): List<MediaItem> {
         }
     }
     return result
+}
+
+@Composable
+private fun VideoThumbnail(item: MediaItem, palette: AppTheme) {
+    val context = LocalContext.current
+    val frame by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(
+        initialValue = null,
+        key1 = item.uri
+    ) {
+        value = withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, item.uri)
+                retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    ?: retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } catch (_: Exception) {
+                null
+            } finally {
+                runCatching { retriever.release() }
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(palette.surface)) {
+        if (frame != null) {
+            AsyncImage(
+                model = frame,
+                contentDescription = "Кадр из видео",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("▶", color = palette.accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Box(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
+                .clip(RoundedCornerShape(8.dp)).background(Color(0xAA000000))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) { Text("▶", color = Color.White, fontSize = 11.sp) }
+    }
 }
 
 private fun openVideo(context: Context, uri: Uri) {
