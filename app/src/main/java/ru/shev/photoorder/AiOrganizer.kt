@@ -157,7 +157,7 @@ internal fun analyzePhotosWithAi(context: Context, media: List<MediaItem>, onPro
             val uriText = item.uri.toString()
             val signature = item.dateSeconds.toString() + "|" + item.name
             val cached = cache.get(uriText, signature)
-            val result = if (cached != null) AiPhotoResult(item, cached.labels, cached.category) else {
+            val result = if (cached != null) AiPhotoResult(item, cached.labels, categoryForLabels(cached.labels)) else {
                 try {
                     val image = InputImage.fromFilePath(context, item.uri)
                     val labels = Tasks.await(labeler.process(image)).filter { it.confidence >= 0.62f }
@@ -182,7 +182,7 @@ private fun loadCachedAiResults(context: Context, media: List<MediaItem>): List<
     return try {
         media.asSequence().filterNot { it.isVideo }.mapNotNull { item ->
             val signature = item.dateSeconds.toString() + "|" + item.name
-            cache.get(item.uri.toString(), signature)?.let { AiPhotoResult(item, it.labels, it.category) }
+            cache.get(item.uri.toString(), signature)?.let { AiPhotoResult(item, it.labels, categoryForLabels(it.labels)) }
         }.toList()
     } finally {
         cache.close()
