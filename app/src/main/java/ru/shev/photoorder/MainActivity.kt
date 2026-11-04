@@ -829,7 +829,7 @@ private fun PhotoOrderScreen(
                         val pressInteraction = remember(item.uri) { MutableInteractionSource() }
                         val isPhotoPressed by pressInteraction.collectIsPressedAsState()
                         val photoScale by animateFloatAsState(
-                            targetValue = if (isPhotoPressed && !item.isVideo) 1.65f else 1f,
+                            targetValue = if (isPhotoPressed && !item.isVideo) 1.82f else 1f,
                             animationSpec = tween(durationMillis = 140),
                             label = "galleryPhotoPressScale"
                         )
