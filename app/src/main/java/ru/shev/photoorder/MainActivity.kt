@@ -415,7 +415,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 AsyncImage(
-                                    model = theme.wallpaperUrl.replace("!d", "!s1"),
+                                    model = themeWallpaperRes(theme.id),
                                     contentDescription = "Фото темы ${theme.name}",
                                     modifier = Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(7.dp)),
                                     contentScale = ContentScale.Crop
@@ -490,7 +490,7 @@ private fun PhotoOrderScreen(themeId: Int, onThemeChange: (Int) -> Unit) {
     ) {
     Box(modifier = Modifier.fillMaxSize()) {
         AsyncImage(
-            model = palette.wallpaperUrl,
+            model = themeWallpaperRes(themeId),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
