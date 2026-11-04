@@ -79,6 +79,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
@@ -200,6 +201,65 @@ private class SlantedButtonShape(private val cut: Float = 0.16f) : androidx.comp
             close()
         }
         return androidx.compose.ui.graphics.Outline.Generic(path)
+    }
+}
+
+
+/**
+ * Глянцевый объёмный слой для каждой темы: цветные световые сферы,
+ * мягкий неоновый ореол и тонкий блик. Фото остаётся видимым под ним.
+ */
+@Composable
+private fun ThemeGlowOverlay(
+    theme: AppTheme,
+    modifier: Modifier = Modifier,
+    intensity: Float = 1f
+) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(
+                Brush.linearGradient(
+                    listOf(
+                        theme.background.copy(alpha = 0.05f * intensity),
+                        theme.primary.copy(alpha = 0.13f * intensity),
+                        theme.secondary.copy(alpha = 0.08f * intensity),
+                        Color.Black.copy(alpha = 0.04f * intensity)
+                    )
+                )
+            )
+        )
+        Box(
+            modifier = Modifier.align(Alignment.TopEnd).size(190.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(theme.secondary.copy(alpha = 0.38f * intensity), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier.align(Alignment.BottomStart).size(220.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(theme.accent.copy(alpha = 0.30f * intensity), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.34f * intensity),
+                            theme.secondary.copy(alpha = 0.62f * intensity),
+                            Color.White.copy(alpha = 0.20f * intensity),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
     }
 }
 
@@ -645,12 +705,27 @@ private fun PhotoOrderScreen(
                                     .padding(horizontal = 4.dp, vertical = 5.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                AsyncImage(
-                                    model = theme.wallpaperUrl,
-                                    contentDescription = "Фото темы ${theme.name}",
-                                    modifier = Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(7.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(32.dp)
+                                        .clip(RoundedCornerShape(7.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = theme.wallpaperUrl,
+                                        contentDescription = "Фото темы ${theme.name}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    ThemeGlowOverlay(theme, Modifier.fillMaxSize(), intensity = 0.72f)
+                                    Box(
+                                        modifier = Modifier.fillMaxSize().border(
+                                            1.dp,
+                                            Brush.linearGradient(
+                                                listOf(Color.White.copy(alpha = 0.52f), theme.accent.copy(alpha = 0.72f), Color.Transparent)
+                                            ),
+                                            RoundedCornerShape(7.dp)
+                                        )
+                                    )
+                                }
                                 Text(theme.name, color = theme.text, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(4.dp)).background(theme.primary))
                                 if (themeId == theme.id) Text("✓", color = theme.text, fontSize = 11.sp, fontWeight = FontWeight.Black)
@@ -725,13 +800,16 @@ private fun PhotoOrderScreen(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    listOf(Color.Black.copy(alpha = 0.10f), Color.Transparent, palette.background.copy(alpha = 0.22f))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.08f), Color.Transparent, palette.background.copy(alpha = 0.18f))
+                    )
                 )
             )
-        )
+            ThemeGlowOverlay(palette, Modifier.fillMaxSize(), intensity = 0.62f)
+        }
         Column(
         modifier = Modifier
             .fillMaxSize()
