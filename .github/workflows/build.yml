@@ -1,91 +1,162 @@
 name: Build APK
+
 on:
   push:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+
 concurrency:
-  group: fotoporyadok-${{ github.ref }}
+  group: fotoporyadok-build-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
+  validate-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pull request source without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 8.9 without cache
+        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4.4.2
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+      - name: Prepare theme resources
+        run: bash scripts/download-theme-images.sh
+      - name: Run tests and build debug APK (no signing secrets)
+        run: gradle testDebugUnitTest assembleDebug --no-daemon
+
   build:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout exact source revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+          java-version: '17'
+      - name: Set up Gradle 8.9 without cache
+        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4.4.2
         with:
-          gradle-version: 8.9
-      - name: Prepare release signing key
+          gradle-version: '8.9'
+          cache-disabled: true
+      - name: Prepare theme resources
+        run: bash scripts/download-theme-images.sh
+      - name: Run unit tests and build debug APK
+        run: gradle testDebugUnitTest assembleDebug --no-daemon
+      - name: Build signed release APK (main push only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           FOTOPORYADOK_SIGNING_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -z "${FOTOPORYADOK_SIGNING_PASSWORD:-}" ]; then
-            echo "::error::Add the FOTOPORYADOK_SIGNING_PASSWORD repository secret before building the signed release."
+            echo "::error::The release signing secret is not configured."
             exit 1
           fi
-          base64 --decode signing/release-key.jks.enc.b64 > "$RUNNER_TEMP/release-key.jks.enc"
+          encrypted="$RUNNER_TEMP/release-key.jks.enc"
+          keystore="$RUNNER_TEMP/fotoporyadok-release.jks"
+          cleanup() {
+            rm -f "$encrypted" "$keystore"
+          }
+          trap cleanup EXIT
+          base64 --decode signing/release-key.jks.enc.b64 > "$encrypted"
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
-            -in "$RUNNER_TEMP/release-key.jks.enc" \
-            -out "$RUNNER_TEMP/fotoporyadok-release.jks" \
+            -in "$encrypted" -out "$keystore" \
             -pass env:FOTOPORYADOK_SIGNING_PASSWORD
-          keytool -list -keystore "$RUNNER_TEMP/fotoporyadok-release.jks" \
-            -storepass:env FOTOPORYADOK_SIGNING_PASSWORD -alias fotoporyadok >/dev/null
-          {
-            echo "KEYSTORE_FILE=$RUNNER_TEMP/fotoporyadok-release.jks"
-            echo "KEYSTORE_PASSWORD=$FOTOPORYADOK_SIGNING_PASSWORD"
-            echo "KEY_ALIAS=fotoporyadok"
-            echo "KEY_PASSWORD=$FOTOPORYADOK_SIGNING_PASSWORD"
-          } >> "$GITHUB_ENV"
-          echo "Release signing key decrypted and verified."
-      - name: Bundle the ten CC0 theme photographs into the APK
-        run: bash scripts/download-theme-images.sh
-      - name: Build debug and signed release APKs
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
-          KEY_ALIAS: fotoporyadok
-          KEY_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
-        run: gradle assembleDebug assembleRelease --stacktrace
-      - uses: actions/upload-artifact@v4
+          keytool -list -keystore "$keystore" \
+            -storepass:env FOTOPORYADOK_SIGNING_PASSWORD \
+            -alias fotoporyadok >/dev/null
+          KEYSTORE_FILE="$keystore" \
+          KEYSTORE_PASSWORD="$FOTOPORYADOK_SIGNING_PASSWORD" \
+          KEY_ALIAS=fotoporyadok \
+          KEY_PASSWORD="$FOTOPORYADOK_SIGNING_PASSWORD" \
+            gradle assembleRelease --no-daemon
+      - name: Upload debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: Fotoporyadok-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-      - uses: actions/upload-artifact@v4
+          if-no-files-found: error
+          retention-days: 7
+      - name: Prepare release bundle with checksum and provenance
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/fotoporyadok-release"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/fotoporyadok-release/app-release.apk"
+          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
+          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)"
+          test -n "$version_name" && test -n "$version_code"
+          printf 'versionName=%s\nversionCode=%s\ncommit=%s\nrun=%s\n' \
+            "$version_name" "$version_code" "$GITHUB_SHA" "$GITHUB_RUN_ID" \
+            > "$RUNNER_TEMP/fotoporyadok-release/build-info.txt"
+          cd "$RUNNER_TEMP/fotoporyadok-release"
+          sha256sum app-release.apk > app-release.apk.sha256
+      - name: Upload signed release bundle (main push only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: Fotoporyadok-release-apk
-          path: app/build/outputs/apk/release/*.apk
-      - name: Publish signed APK to GitHub Release
-        if: github.ref == 'refs/heads/main'
+          name: Fotoporyadok-release-bundle
+          path: ${{ runner.temp }}/fotoporyadok-release/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download the exact build job release bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: Fotoporyadok-release-bundle
+          path: release
+      - name: Verify checksum and publish signed APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          latest_sha="$(git ls-remote origin refs/heads/main | cut -f1)"
-          if [ "$latest_sha" != "$GITHUB_SHA" ]; then
-            echo "Skipping release: a newer main commit exists."
-            exit 0
-          fi
-          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)"
-          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -n1)"
-          if [ -z "$version_name" ] || [ -z "$version_code" ]; then
-            echo "::error::Could not read app version from app/build.gradle.kts"
+          cd release
+          sha256sum --check app-release.apk.sha256
+          version_name="$(sed -n 's/^versionName=//p' build-info.txt)"
+          version_code="$(sed -n 's/^versionCode=//p' build-info.txt)"
+          source_sha="$(sed -n 's/^commit=//p' build-info.txt)"
+          run_id="$(sed -n 's/^run=//p' build-info.txt)"
+          if [ "$source_sha" != "$GITHUB_SHA" ] || [ "$run_id" != "$GITHUB_RUN_ID" ] || [ -z "$version_name" ] || [ -z "$version_code" ]; then
+            echo "::error::Release provenance does not match this workflow revision."
             exit 1
           fi
           tag="v$version_name"
-          cp app/build/outputs/apk/release/app-release.apk app-release.apk
-          if gh release view "$tag" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload "$tag" app-release.apk --repo "${GITHUB_REPOSITORY}" --clobber
-          else
-            gh release create "$tag" app-release.apk \
-              --repo "${GITHUB_REPOSITORY}" \
-              --title "ФотоПорядок $version_name" \
-              --notes "versionCode: $version_code"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists; increment versionName/versionCode instead of overwriting a published APK."
+            exit 1
           fi
+          gh release create "$tag" app-release.apk app-release.apk.sha256 build-info.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ФотоПорядок $version_name" \
+            --notes "versionCode: $version_code; source: $source_sha; run: $run_id"
