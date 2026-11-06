@@ -146,16 +146,17 @@ jobs:
           version_name="$(sed -n 's/^versionName=//p' build-info.txt)"
           version_code="$(sed -n 's/^versionCode=//p' build-info.txt)"
           source_sha="$(sed -n 's/^commit=//p' build-info.txt)"
-          if [ "$source_sha" != "$GITHUB_SHA" ] || [ -z "$version_name" ] || [ -z "$version_code" ]; then
+          run_id="$(sed -n 's/^run=//p' build-info.txt)"
+          if [ "$source_sha" != "$GITHUB_SHA" ] || [ "$run_id" != "$GITHUB_RUN_ID" ] || [ -z "$version_name" ] || [ -z "$version_code" ]; then
             echo "::error::Release provenance does not match this workflow revision."
             exit 1
           fi
           tag="v$version_name"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" app-release.apk app-release.apk.sha256 build-info.txt --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$tag" app-release.apk app-release.apk.sha256 build-info.txt \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "ФотоПорядок $version_name" \
-              --notes "versionCode: $version_code; source: $source_sha"
+            echo "::error::Release $tag already exists; increment versionName/versionCode instead of overwriting a published APK."
+            exit 1
           fi
+          gh release create "$tag" app-release.apk app-release.apk.sha256 build-info.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ФотоПорядок $version_name" \
+            --notes "versionCode: $version_code; source: $source_sha; run: $run_id"
