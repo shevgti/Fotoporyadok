@@ -39,6 +39,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -425,6 +426,17 @@ private fun PhotoOrderScreen(
         ),
         label = "updateButtonPulseValue"
     )
+    // Медленное дыхание подсветки делает фон живым, но не отвлекает от фотографий.
+    val ambientGlowTransition = rememberInfiniteTransition(label = "ambientPhotoGlow")
+    val ambientGlow by ambientGlowTransition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.68f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5200),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambientPhotoGlowValue"
+    )
 
     // Nested AI navigation is handled by AiOrganizerPage. On the root
     // screen, system Back asks for confirmation instead of closing by accident.
@@ -810,7 +822,7 @@ private fun PhotoOrderScreen(
                     )
                 )
             )
-            ThemeGlowOverlay(palette, Modifier.fillMaxSize(), intensity = 0.62f)
+            ThemeGlowOverlay(palette, Modifier.fillMaxSize(), intensity = ambientGlow)
         }
         Column(
         modifier = Modifier
@@ -843,11 +855,21 @@ private fun PhotoOrderScreen(
                 }
             }
             .background(palette.background.copy(alpha = 0.28f))
+            .animateContentSize()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 0.dp),
+            modifier = Modifier.fillMaxWidth()
+                .padding(top = 3.dp, bottom = 5.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(palette.card.copy(alpha = 0.88f), palette.surface.copy(alpha = 0.70f))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.48f), RoundedCornerShape(18.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1088,7 +1110,9 @@ private fun PhotoOrderScreen(
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = palette.card),
-                            modifier = Modifier.pointerInput(item.uri) {
+                            modifier = Modifier.animateItem()
+                                .shadow(5.dp, RoundedCornerShape(18.dp))
+                                .pointerInput(item.uri) {
                                 detectTapGestures(
                                     onTap = {
                                         viewerMedia = visibleMedia
@@ -1509,7 +1533,7 @@ private fun SlantedActionButton(label: String, palette: AppTheme, onClick: () ->
 private fun StatTile(label: String, value: String, modifier: Modifier, accent: Color, palette: AppTheme) {
     val shape = RoundedCornerShape(17.dp)
     Card(
-        modifier = modifier.shadow(10.dp, shape),
+        modifier = modifier.animateContentSize().shadow(10.dp, shape),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp, pressedElevation = 1.dp)
