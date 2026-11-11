@@ -20,7 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
@@ -255,6 +260,15 @@ internal fun AiOrganizerPage(
         label = "photoPreviewProgress"
     )
 
+    // Единый мягкий цикл для стеклянных карточек альбомов.
+    val albumGlowTransition = rememberInfiniteTransition(label = "aiAlbumGlassMotion")
+    val albumGlow by albumGlowTransition.animateFloat(
+        initialValue = 0.18f,
+        targetValue = 0.92f,
+        animationSpec = infiniteRepeatable(tween(3600), RepeatMode.Reverse),
+        label = "aiAlbumGlassGlow"
+    )
+
     LaunchedEffect(media) {
         if (media.isNotEmpty() && results.isEmpty()) {
             val cached = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -342,7 +356,12 @@ internal fun AiOrganizerPage(
                                 val albumCardShape = RoundedCornerShape(12.dp)
                                 Card(
                                     modifier = Modifier.fillMaxWidth()
-                                        .shadow(7.dp, albumCardShape)
+                                        .graphicsLayer {
+                                            val lift = 1f + albumGlow * 0.004f
+                                            scaleX = lift
+                                            scaleY = lift
+                                        }
+                                        .shadow((7f + albumGlow * 4f).dp, albumCardShape)
                                         .clickable { selectedAlbum = album },
                                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                                     shape = albumCardShape,
@@ -350,10 +369,10 @@ internal fun AiOrganizerPage(
                                         2.dp,
                                         Brush.linearGradient(
                                             listOf(
-                                                Color.White.copy(alpha = 0.96f),
-                                                palette.accent.copy(alpha = 0.98f),
-                                                palette.primary.copy(alpha = 0.96f),
-                                                palette.secondary.copy(alpha = 0.90f)
+                                                Color.White.copy(alpha = 0.72f + albumGlow * 0.28f),
+                                                palette.accent.copy(alpha = 0.62f + albumGlow * 0.36f),
+                                                palette.primary.copy(alpha = 0.68f + albumGlow * 0.28f),
+                                                palette.secondary.copy(alpha = 0.58f + albumGlow * 0.34f)
                                             )
                                         )
                                     )
