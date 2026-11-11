@@ -218,34 +218,77 @@ private fun ThemeGlowOverlay(
     modifier: Modifier = Modifier,
     intensity: Float = 1f
 ) {
-    Box(modifier = modifier) {
+    // Один общий цикл движения для всего фона: не создаём отдельные бесконечные
+    // анимации для каждой фотографии и не нагружаем прокрутку медиатеки.
+    val motion = rememberInfiniteTransition(label = "glossyBackgroundMotion")
+    val drift by motion.animateFloat(
+        initialValue = -1f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(7600), RepeatMode.Reverse),
+        label = "glossyLightDrift"
+    )
+    val pulse by motion.animateFloat(
+        initialValue = 0.78f, targetValue = 1.16f,
+        animationSpec = infiniteRepeatable(tween(4200), RepeatMode.Reverse),
+        label = "glossyLightPulse"
+    )
+    val sweep by motion.animateFloat(
+        initialValue = -1.35f, targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(tween(6800), RepeatMode.Restart),
+        label = "glossyReflectionSweep"
+    )
+    Box(modifier = modifier.clip(RoundedCornerShape(0.dp))) {
         Box(
-            modifier = Modifier.fillMaxSize().background(
+            Modifier.fillMaxSize().background(
                 Brush.linearGradient(
                     listOf(
-                        theme.background.copy(alpha = 0.05f * intensity),
-                        theme.primary.copy(alpha = 0.13f * intensity),
-                        theme.secondary.copy(alpha = 0.08f * intensity),
-                        Color.Black.copy(alpha = 0.04f * intensity)
+                        theme.background.copy(alpha = 0.04f * intensity),
+                        theme.primary.copy(alpha = 0.19f * intensity),
+                        theme.secondary.copy(alpha = 0.13f * intensity),
+                        Color.Black.copy(alpha = 0.035f * intensity)
                     )
                 )
             )
         )
         Box(
-            modifier = Modifier.align(Alignment.TopEnd).size(190.dp)
-                .clip(CircleShape)
+            modifier = Modifier.align(Alignment.TopEnd).size(260.dp)
+                .graphicsLayer {
+                    translationX = drift * size.width * 0.24f
+                    translationY = -drift * size.height * 0.10f
+                    scaleX = pulse
+                    scaleY = pulse
+                }
                 .background(
                     Brush.radialGradient(
-                        listOf(theme.secondary.copy(alpha = 0.38f * intensity), Color.Transparent)
-                    )
+                        listOf(theme.secondary.copy(alpha = 0.52f * intensity), theme.primary.copy(alpha = 0.12f * intensity), Color.Transparent)
+                    ), CircleShape
                 )
         )
         Box(
-            modifier = Modifier.align(Alignment.BottomStart).size(220.dp)
-                .clip(CircleShape)
+            modifier = Modifier.align(Alignment.BottomStart).size(300.dp)
+                .graphicsLayer {
+                    translationX = -drift * size.width * 0.22f
+                    translationY = drift * size.height * 0.08f
+                    scaleX = 1.22f - pulse * 0.18f
+                    scaleY = 1.22f - pulse * 0.18f
+                }
                 .background(
                     Brush.radialGradient(
-                        listOf(theme.accent.copy(alpha = 0.30f * intensity), Color.Transparent)
+                        listOf(theme.accent.copy(alpha = 0.43f * intensity), theme.primary.copy(alpha = 0.10f * intensity), Color.Transparent)
+                    ), CircleShape
+                )
+        )
+        // Длинный диагональный блик проходит по стеклянному фону, а не по фото.
+        Box(
+            modifier = Modifier.align(Alignment.CenterStart)
+                .width(150.dp).fillMaxHeight()
+                .graphicsLayer {
+                    translationX = sweep * size.width
+                    rotationZ = 18f
+                    alpha = 0.20f * intensity
+                }
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.58f), theme.secondary.copy(alpha = 0.30f), Color.Transparent)
                     )
                 )
         )
@@ -253,13 +296,8 @@ private fun ThemeGlowOverlay(
             modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter)
                 .background(
                     Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.White.copy(alpha = 0.34f * intensity),
-                            theme.secondary.copy(alpha = 0.62f * intensity),
-                            Color.White.copy(alpha = 0.20f * intensity),
-                            Color.Transparent
-                        )
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.55f * intensity),
+                            theme.secondary.copy(alpha = 0.78f * intensity), Color.White.copy(alpha = 0.35f * intensity), Color.Transparent)
                     )
                 )
         )
