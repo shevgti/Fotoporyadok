@@ -15,38 +15,44 @@ urls=(
   'https://c.pxhere.com/photos/a4/fc/photo-111696.jpg!d'
   'https://c.pxhere.com/photos/b0/82/beach_black_and_white_boat_bridge_dawn_dock_dusk_evening-1130756.jpg!d'
 )
-
-# Offline gradient fallbacks keep the release build deterministic when PxHere is unavailable.
-fallback_gradients=(
-  '0B1D35 4D8A9B' '091A32 286B86' '062A3A 18A6B8' '233C4A A9C4C7'
-  '4A242A F0A66D' '071B35 1A806F' '174B43 D3B96F' '173A59 78B8D0'
-  '472A34 D58A70' '101820 737F89'
-)
+# Offline vector fallbacks keep every theme resource available even when PxHere
+# is unavailable from GitHub-hosted runners. Coil can load XML drawables by ID.
+make_fallback() {
+  local number="$1" index="$2"
+  local -a colors=(
+    "#183B52,#55A6A0" "#16445A,#80C7C0" "#253B62,#79A9C8"
+    "#263C52,#B5C8CE" "#31566A,#A7D4D4" "#34496C,#A7C7E8"
+    "#5A3B58,#E5A77C" "#24506B,#76B6C8" "#38546D,#B8C9D9"
+    "#263746,#9AAEBB"
+  )
+  IFS=',' read -r start end <<< "${colors[$index]}"
+  cat > "$resource_dir/theme_wallpaper_${number}.xml" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="135" android:startColor="$start" android:centerColor="$end" android:endColor="$start" />
+</shape>
+EOF
+}
 
 for index in "${!urls[@]}"; do
   number=$(printf '%02d' "$((index + 1))")
-  image="$resource_dir/theme_wallpaper_${number}.jpg"
+  target="$resource_dir/theme_wallpaper_${number}.jpg"
   fallback="$resource_dir/theme_wallpaper_${number}.xml"
-  rm -f "$image" "$fallback"
-
+  tmp="$RUNNER_TEMP/theme_wallpaper_${number}.jpg"
+  rm -f "$target" "$fallback" "$tmp"
+  # Network images are optional. A valid download is used when available;
+  # a bundled gradient drawable is generated deterministically on any failure.
   if curl --fail --silent --show-error --location \
-      --retry 3 --retry-all-errors --retry-delay 3 --retry-max-time 45 \
-      --connect-timeout 15 --max-time 60 \
-      --user-agent "FotoPoryadok-Android-Build/2.49 (+https://github.com/shevgti/Fotoporyadok)" \
-      "${urls[$index]}" --output "$image" && test -s "$image" \
-      && file "$image" | grep -q 'JPEG image data'; then
-    echo "Downloaded theme wallpaper $number."
-    rm -f "$fallback"
+    --retry 3 --retry-all-errors --retry-delay 3 --retry-max-time 90 \
+    --connect-timeout 15 --max-time 45 \
+    --user-agent "FotoPoryadok-Android-Build/2.49 (+https://github.com/shevgti/Fotoporyadok)" \
+    "${urls[$index]}" --output "$tmp" &&
+    test -s "$tmp" && file "$tmp" | grep -Eqi 'JPEG image data|JFIF'; then
+    mv "$tmp" "$target"
+    echo "Theme wallpaper $number: downloaded."
   else
-    rm -f "$image"
-    read -r start_color end_color <<< "${fallback_gradients[$index]}"
-    cat > "$fallback" <<EOF
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient android:angle="135" android:startColor="#${start_color}" android:endColor="#${end_color}" android:type="linear" />
-</shape>
-EOF
-    test -s "$fallback"
-    echo "::warning::PxHere image $number unavailable; using bundled gradient fallback."
+    rm -f "$tmp"
+    make_fallback "$number" "$index"
+    echo "::warning::Theme wallpaper $number could not be downloaded; using offline gradient fallback."
   fi
 done
