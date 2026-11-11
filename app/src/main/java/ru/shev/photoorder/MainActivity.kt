@@ -1236,11 +1236,14 @@ private fun PhotoOrderScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = palette.card),
+                        val mediaCardShape = RoundedCornerShape(23.dp)
+                        Box(
                             modifier = Modifier.animateItem()
-                                .shadow(5.dp, RoundedCornerShape(18.dp))
+                                .fillMaxWidth()
+                                .aspectRatio(0.88f)
+                                .shadow(11.dp, mediaCardShape)
+                                .clip(mediaCardShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.30f), mediaCardShape)
                                 .pointerInput(item.uri) {
                                 detectTapGestures(
                                     onTap = {
@@ -1290,11 +1293,45 @@ private fun PhotoOrderScreen(
                                             blurRadius = 3.5f
                                         )
                                     )
+                                    Box(
+                                        modifier = Modifier.align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .height(72.dp)
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))
+                                                )
+                                            )
+                                    )
+                                    Row(
+                                        modifier = Modifier.align(Alignment.TopStart)
+                                            .padding(9.dp)
+                                            .clip(RoundedCornerShape(30.dp))
+                                            .background(Color.Black.copy(alpha = 0.42f))
+                                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(30.dp))
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            if (item.isVideo) "▶" else "▧",
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            if (item.isVideo) "ВИДЕО" else "ФОТО",
+                                            color = Color.White,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.6.sp
+                                        )
+                                    }
                                     Column(
                                         modifier = Modifier.align(Alignment.BottomStart)
                                             .fillMaxWidth()
-                                            .padding(horizontal = 4.dp, vertical = 3.dp),
-                                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                                            .padding(horizontal = 11.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
                                         Text(
                                             item.name,
