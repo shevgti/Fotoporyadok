@@ -1270,7 +1270,7 @@ private fun PhotoOrderScreen(
                             },
                         ) {
                             BoxWithConstraints(
-                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 if (item.isVideo) {
                                     VideoThumbnail(item = item, palette = palette)
