@@ -46,8 +46,8 @@ jobs:
             echo "KEY_PASSWORD=$FOTOPORYADOK_SIGNING_PASSWORD"
           } >> "$GITHUB_ENV"
           echo "Release signing key decrypted and verified."
-      - name: Bundle the ten CC0 theme photographs into the APK
-        run: bash scripts/download-theme-images.sh
+      # Theme wallpapers are bundled vector drawables. Do not download optional photos
+      # from PxHere at build time: intermittent upstream HTTP 500s must not block APK builds.
       - name: Build debug and signed release APKs
         env:
           KEYSTORE_PASSWORD: ${{ secrets.FOTOPORYADOK_SIGNING_PASSWORD }}
