@@ -399,6 +399,92 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+private fun LibraryHeroCard(
+    total: Int,
+    photos: Int,
+    videos: Int,
+    palette: AppTheme
+) {
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .shadow(10.dp, shape)
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        palette.primary.copy(alpha = 0.96f),
+                        palette.secondary.copy(alpha = 0.88f),
+                        palette.card.copy(alpha = 0.96f)
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.48f), shape)
+            .padding(horizontal = 17.dp, vertical = 15.dp)
+    ) {
+        Box(
+            Modifier.align(Alignment.TopEnd).size(112.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Color.White.copy(alpha = 0.24f), Color.Transparent)
+                    ),
+                    CircleShape
+                )
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "ВАША МЕДИАТЕКА",
+                        color = palette.onPrimary.copy(alpha = 0.78f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Text(
+                        total.toString(),
+                        color = palette.onPrimary,
+                        fontSize = 38.sp,
+                        lineHeight = 42.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "файлов собрано в одном месте",
+                        color = palette.onPrimary.copy(alpha = 0.86f),
+                        fontSize = 11.sp
+                    )
+                }
+                Box(
+                    Modifier.size(46.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(Color.White.copy(alpha = 0.18f))
+                        .border(1.dp, Color.White.copy(alpha = 0.38f), RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✦", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("▧  $photos фото", "▷  $videos видео").forEach { label ->
+                    Box(
+                        Modifier.clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.17f))
+                            .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(label, color = palette.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PhotoOrderScreen(
     lifecycle: Lifecycle,
     themeId: Int,
@@ -1040,14 +1126,12 @@ private fun PhotoOrderScreen(
                 }
             }
         } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(9.dp)
-            ) {
-                StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), palette.accent, palette)
-                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
-                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
-            }
+            LibraryHeroCard(
+                total = media.size,
+                photos = media.count { !it.isVideo },
+                videos = media.count { it.isVideo },
+                palette = palette
+            )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
                     .shadow(7.dp, RoundedCornerShape(15.dp))
@@ -1237,9 +1321,17 @@ private fun PhotoOrderScreen(
             }
         }
         BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp)
-                .height(42.dp)
-                .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 12.dp)
+                .height(54.dp)
+                .shadow(9.dp, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(palette.card.copy(alpha = 0.96f), palette.surface.copy(alpha = 0.94f))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.54f), RoundedCornerShape(20.dp))
+                .padding(5.dp)
         ) {
             // Индикатор следует за реальным смещением Pager, поэтому цвет
             // перетекает за пальцем и при свайпе, и при нажатии на вкладку.
@@ -1274,7 +1366,7 @@ private fun PhotoOrderScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf("⌂  Главная", "✨  ИИ-альбомы").forEachIndexed { index, label ->
+                listOf("⌂   Галерея", "✦   Умные альбомы").forEachIndexed { index, label ->
                     val active = pageProgress.roundToInt() == index
                     Box(
                         modifier = Modifier.weight(1f).fillMaxHeight()
@@ -1285,7 +1377,7 @@ private fun PhotoOrderScreen(
                             label,
                             color = if (active) Color.White else palette.muted,
                             fontSize = 12.sp,
-                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium
                         )
                     }
                 }
