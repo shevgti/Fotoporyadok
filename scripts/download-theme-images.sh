@@ -15,16 +15,38 @@ urls=(
   'https://c.pxhere.com/photos/a4/fc/photo-111696.jpg!d'
   'https://c.pxhere.com/photos/b0/82/beach_black_and_white_boat_bridge_dawn_dock_dusk_evening-1130756.jpg!d'
 )
+
+# Offline gradient fallbacks keep the release build deterministic when PxHere is unavailable.
+fallback_gradients=(
+  '0B1D35 4D8A9B' '091A32 286B86' '062A3A 18A6B8' '233C4A A9C4C7'
+  '4A242A F0A66D' '071B35 1A806F' '174B43 D3B96F' '173A59 78B8D0'
+  '472A34 D58A70' '101820 737F89'
+)
+
 for index in "${!urls[@]}"; do
   number=$(printf '%02d' "$((index + 1))")
-  rm -f "$resource_dir/theme_wallpaper_${number}.xml"
-  # PxHere intermittently returns HTTP 500 from CI runners. Retry transient
-  # server/network failures with bounded backoff and a clear per-image timeout.
-  curl --fail --show-error --location \
-    --retry 6 --retry-all-errors --retry-delay 5 --retry-max-time 180 \
-    --connect-timeout 20 --max-time 90 \
-    --user-agent "FotoPoryadok-Android-Build/2.49 (+https://github.com/shevgti/Fotoporyadok)" \
-    "${urls[$index]}" --output "$resource_dir/theme_wallpaper_${number}.jpg"
-  test -s "$resource_dir/theme_wallpaper_${number}.jpg"
-  file "$resource_dir/theme_wallpaper_${number}.jpg"
+  image="$resource_dir/theme_wallpaper_${number}.jpg"
+  fallback="$resource_dir/theme_wallpaper_${number}.xml"
+  rm -f "$image" "$fallback"
+
+  if curl --fail --silent --show-error --location \
+      --retry 3 --retry-all-errors --retry-delay 3 --retry-max-time 45 \
+      --connect-timeout 15 --max-time 60 \
+      --user-agent "FotoPoryadok-Android-Build/2.49 (+https://github.com/shevgti/Fotoporyadok)" \
+      "${urls[$index]}" --output "$image" && test -s "$image" \
+      && file "$image" | grep -q 'JPEG image data'; then
+    echo "Downloaded theme wallpaper $number."
+    rm -f "$fallback"
+  else
+    rm -f "$image"
+    read -r start_color end_color <<< "${fallback_gradients[$index]}"
+    cat > "$fallback" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="135" android:startColor="#${start_color}" android:endColor="#${end_color}" android:type="linear" />
+</shape>
+EOF
+    test -s "$fallback"
+    echo "::warning::PxHere image $number unavailable; using bundled gradient fallback."
+  fi
 done
