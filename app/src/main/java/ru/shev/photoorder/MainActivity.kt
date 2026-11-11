@@ -405,84 +405,85 @@ private fun LibraryHeroCard(
     videos: Int,
     palette: AppTheme
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(26.dp)
     Box(
         modifier = Modifier.fillMaxWidth()
-            .shadow(10.dp, shape)
+            .shadow(14.dp, shape)
             .clip(shape)
             .background(
                 Brush.linearGradient(
-                    listOf(
-                        palette.primary.copy(alpha = 0.96f),
-                        palette.secondary.copy(alpha = 0.88f),
-                        palette.card.copy(alpha = 0.96f)
-                    )
+                    0.0f to Color(0xFF071827).copy(alpha = 0.96f),
+                    0.48f to palette.primary.copy(alpha = 0.92f),
+                    1.0f to palette.secondary.copy(alpha = 0.82f)
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.48f), shape)
-            .padding(horizontal = 17.dp, vertical = 15.dp)
+            .border(1.dp, Color.White.copy(alpha = 0.42f), shape)
+            .padding(horizontal = 18.dp, vertical = 15.dp)
     ) {
         Box(
-            Modifier.align(Alignment.TopEnd).size(112.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color.White.copy(alpha = 0.24f), Color.Transparent)
-                    ),
-                    CircleShape
-                )
+            Modifier.align(Alignment.CenterEnd).size(190.dp)
+                .graphicsLayer { translationX = 46.dp.toPx(); translationY = (-16).dp.toPx() }
+                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
         )
-        Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+        Box(
+            Modifier.align(Alignment.CenterEnd).size(132.dp)
+                .graphicsLayer { translationX = 18.dp.toPx() }
+                .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape)
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        "ВАША МЕДИАТЕКА",
-                        color = palette.onPrimary.copy(alpha = 0.78f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
-                    Text(
-                        total.toString(),
-                        color = palette.onPrimary,
-                        fontSize = 38.sp,
-                        lineHeight = 42.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        "файлов собрано в одном месте",
-                        color = palette.onPrimary.copy(alpha = 0.86f),
-                        fontSize = 11.sp
-                    )
+                Text(
+                    "ВАША ИСТОРИЯ В ОДНОМ МЕСТЕ",
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.1.sp
+                )
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(total.toString(), color = Color.White, fontSize = 43.sp,
+                        lineHeight = 47.sp, fontWeight = FontWeight.Black)
+                    Text("ФАЙЛОВ", color = Color.White.copy(alpha = 0.82f),
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp))
                 }
-                Box(
-                    Modifier.size(46.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(Color.White.copy(alpha = 0.18f))
-                        .border(1.dp, Color.White.copy(alpha = 0.38f), RoundedCornerShape(15.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("✦", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
-                }
+                Text("Медиатека собрана и готова к просмотру",
+                    color = Color.White.copy(alpha = 0.88f), fontSize = 10.sp)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("▧  $photos фото", "▷  $videos видео").forEach { label ->
-                    Box(
-                        Modifier.clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.17f))
-                            .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+            Column(
+                modifier = Modifier.width(112.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                listOf("▧" to photos.toString() to "ФОТО", "▷" to videos.toString() to "ВИДЕО").forEach { entry ->
+                    val icon = entry.first.first
+                    val count = entry.first.second
+                    val label = entry.second
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .border(1.dp, Color.White.copy(alpha = 0.26f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Text(label, color = palette.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(icon, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                            Text(count, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun PhotoOrderScreen(
@@ -1133,38 +1134,44 @@ private fun PhotoOrderScreen(
                 palette = palette
             )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
-                    .shadow(7.dp, RoundedCornerShape(15.dp))
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(Brush.verticalGradient(listOf(palette.card, palette.surface, palette.card)))
-                    .border(1.dp, Color.White.copy(alpha = 0.62f), RoundedCornerShape(15.dp))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
+                listOf("Все файлы", "Фотографии", "Видео").forEachIndexed { index, label ->
                     val active = selectedTab == index
-                    Box(
+                    Column(
                         modifier = Modifier.weight(1f)
-                            .shadow(if (active) 5.dp else 0.dp, SlantedButtonShape(0.12f))
-                            .clip(SlantedButtonShape(0.12f))
+                            .shadow(if (active) 8.dp else 1.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (active) Brush.verticalGradient(listOf(palette.secondary, palette.primary))
-                                else Brush.verticalGradient(listOf(palette.card, palette.surface))
+                                if (active) Brush.linearGradient(listOf(palette.primary, palette.secondary))
+                                else Brush.verticalGradient(listOf(palette.card.copy(alpha = 0.90f), palette.surface.copy(alpha = 0.76f)))
                             )
-                            .clickable { selectedTab = index }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                            .border(1.dp, if (active) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+                            .clickable { selectedTab = index }
+                            .padding(vertical = 11.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Text(label, fontSize = 12.sp, color = if (active) palette.onPrimary else palette.muted,
+                        Text(listOf("▦", "▧", "▷")[index], color = if (active) Color.White else palette.muted,
+                            fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(label, fontSize = 9.sp, maxLines = 1,
+                            color = if (active) Color.White else palette.muted,
                             fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold)
                     }
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 1.dp, bottom = 1.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                SortButton("Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
-                SortButton("Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
+                Text("СОРТИРОВКА", color = palette.muted, fontSize = 8.sp,
+                    fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SortButton("↓ Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
+                    SortButton("↑ Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
+                }
             }
             Text(
                 when {
