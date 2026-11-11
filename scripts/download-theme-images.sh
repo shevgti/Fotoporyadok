@@ -18,8 +18,13 @@ urls=(
 for index in "${!urls[@]}"; do
   number=$(printf '%02d' "$((index + 1))")
   rm -f "$resource_dir/theme_wallpaper_${number}.xml"
-  curl --fail --location --retry 3 --retry-delay 2 "${urls[$index]}" \
-    --output "$resource_dir/theme_wallpaper_${number}.jpg"
+  # PxHere intermittently returns HTTP 500 from CI runners. Retry transient
+  # server/network failures with bounded backoff and a clear per-image timeout.
+  curl --fail --show-error --location \
+    --retry 6 --retry-all-errors --retry-delay 5 --retry-max-time 180 \
+    --connect-timeout 20 --max-time 90 \
+    --user-agent "FotoPoryadok-Android-Build/2.49 (+https://github.com/shevgti/Fotoporyadok)" \
+    "${urls[$index]}" --output "$resource_dir/theme_wallpaper_${number}.jpg"
   test -s "$resource_dir/theme_wallpaper_${number}.jpg"
   file "$resource_dir/theme_wallpaper_${number}.jpg"
 done
