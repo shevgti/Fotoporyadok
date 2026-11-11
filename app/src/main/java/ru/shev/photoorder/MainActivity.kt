@@ -399,6 +399,93 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+private fun LibraryHeroCard(
+    total: Int,
+    photos: Int,
+    videos: Int,
+    palette: AppTheme
+) {
+    val shape = RoundedCornerShape(26.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth()
+            .shadow(14.dp, shape)
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    0.0f to Color(0xFF071827).copy(alpha = 0.96f),
+                    0.48f to palette.primary.copy(alpha = 0.92f),
+                    1.0f to palette.secondary.copy(alpha = 0.82f)
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.42f), shape)
+            .padding(horizontal = 18.dp, vertical = 15.dp)
+    ) {
+        Box(
+            Modifier.align(Alignment.CenterEnd).size(190.dp)
+                .graphicsLayer { translationX = 46.dp.toPx(); translationY = (-16).dp.toPx() }
+                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+        )
+        Box(
+            Modifier.align(Alignment.CenterEnd).size(132.dp)
+                .graphicsLayer { translationX = 18.dp.toPx() }
+                .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape)
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    "ВАША ИСТОРИЯ В ОДНОМ МЕСТЕ",
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.1.sp
+                )
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(total.toString(), color = Color.White, fontSize = 43.sp,
+                        lineHeight = 47.sp, fontWeight = FontWeight.Black)
+                    Text("ФАЙЛОВ", color = Color.White.copy(alpha = 0.82f),
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp))
+                }
+                Text("Медиатека собрана и готова к просмотру",
+                    color = Color.White.copy(alpha = 0.88f), fontSize = 10.sp)
+            }
+            Column(
+                modifier = Modifier.width(112.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                listOf("▧" to photos.toString() to "ФОТО", "▷" to videos.toString() to "ВИДЕО").forEach { entry ->
+                    val icon = entry.first.first
+                    val count = entry.first.second
+                    val label = entry.second
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .border(1.dp, Color.White.copy(alpha = 0.26f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        Text(icon, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                            Text(count, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                            Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
 private fun PhotoOrderScreen(
     lifecycle: Lifecycle,
     themeId: Int,
@@ -1040,47 +1127,51 @@ private fun PhotoOrderScreen(
                 }
             }
         } else {
+            LibraryHeroCard(
+                total = media.size,
+                photos = media.count { !it.isVideo },
+                videos = media.count { it.isVideo },
+                palette = palette
+            )
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(9.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatTile("ВСЕГО", media.size.toString(), Modifier.weight(1f), palette.accent, palette)
-                StatTile("ФОТО", media.count { !it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
-                StatTile("ВИДЕО", media.count { it.isVideo }.toString(), Modifier.weight(1f), palette.accent, palette)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
-                    .shadow(7.dp, RoundedCornerShape(15.dp))
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(Brush.verticalGradient(listOf(palette.card, palette.surface, palette.card)))
-                    .border(1.dp, Color.White.copy(alpha = 0.62f), RoundedCornerShape(15.dp))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                listOf("Всё", "Фото", "Видео").forEachIndexed { index, label ->
+                listOf("Все файлы", "Фотографии", "Видео").forEachIndexed { index, label ->
                     val active = selectedTab == index
-                    Box(
+                    Column(
                         modifier = Modifier.weight(1f)
-                            .shadow(if (active) 5.dp else 0.dp, SlantedButtonShape(0.12f))
-                            .clip(SlantedButtonShape(0.12f))
+                            .shadow(if (active) 8.dp else 1.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (active) Brush.verticalGradient(listOf(palette.secondary, palette.primary))
-                                else Brush.verticalGradient(listOf(palette.card, palette.surface))
+                                if (active) Brush.linearGradient(listOf(palette.primary, palette.secondary))
+                                else Brush.verticalGradient(listOf(palette.card.copy(alpha = 0.90f), palette.surface.copy(alpha = 0.76f)))
                             )
-                            .clickable { selectedTab = index }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                            .border(1.dp, if (active) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+                            .clickable { selectedTab = index }
+                            .padding(vertical = 11.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Text(label, fontSize = 12.sp, color = if (active) palette.onPrimary else palette.muted,
+                        Text(listOf("▦", "▧", "▷")[index], color = if (active) Color.White else palette.muted,
+                            fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(label, fontSize = 9.sp, maxLines = 1,
+                            color = if (active) Color.White else palette.muted,
                             fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold)
                     }
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 1.dp, bottom = 1.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                SortButton("Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
-                SortButton("Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
+                Text("СОРТИРОВКА", color = palette.muted, fontSize = 8.sp,
+                    fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SortButton("↓ Новые", sort == MediaSort.NEWEST, palette) { sort = MediaSort.NEWEST }
+                    SortButton("↑ Старые", sort == MediaSort.OLDEST, palette) { sort = MediaSort.OLDEST }
+                }
             }
             Text(
                 when {
@@ -1145,11 +1236,14 @@ private fun PhotoOrderScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(visibleMedia, key = { it.uri.toString() }) { item ->
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = palette.card),
+                        val mediaCardShape = RoundedCornerShape(23.dp)
+                        Box(
                             modifier = Modifier.animateItem()
-                                .shadow(5.dp, RoundedCornerShape(18.dp))
+                                .fillMaxWidth()
+                                .aspectRatio(0.88f)
+                                .shadow(11.dp, mediaCardShape)
+                                .clip(mediaCardShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.30f), mediaCardShape)
                                 .pointerInput(item.uri) {
                                 detectTapGestures(
                                     onTap = {
@@ -1176,7 +1270,7 @@ private fun PhotoOrderScreen(
                             },
                         ) {
                             BoxWithConstraints(
-                                modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 if (item.isVideo) {
                                     VideoThumbnail(item = item, palette = palette)
@@ -1199,11 +1293,45 @@ private fun PhotoOrderScreen(
                                             blurRadius = 3.5f
                                         )
                                     )
+                                    Box(
+                                        modifier = Modifier.align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .height(72.dp)
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))
+                                                )
+                                            )
+                                    )
+                                    Row(
+                                        modifier = Modifier.align(Alignment.TopStart)
+                                            .padding(9.dp)
+                                            .clip(RoundedCornerShape(30.dp))
+                                            .background(Color.Black.copy(alpha = 0.42f))
+                                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(30.dp))
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            if (item.isVideo) "▶" else "▧",
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            if (item.isVideo) "ВИДЕО" else "ФОТО",
+                                            color = Color.White,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.6.sp
+                                        )
+                                    }
                                     Column(
                                         modifier = Modifier.align(Alignment.BottomStart)
                                             .fillMaxWidth()
-                                            .padding(horizontal = 4.dp, vertical = 3.dp),
-                                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                                            .padding(horizontal = 11.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
                                         Text(
                                             item.name,
@@ -1237,9 +1365,17 @@ private fun PhotoOrderScreen(
             }
         }
         BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp)
-                .height(42.dp)
-                .clip(RoundedCornerShape(16.dp)).background(palette.surface).padding(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 12.dp)
+                .height(54.dp)
+                .shadow(9.dp, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(palette.card.copy(alpha = 0.96f), palette.surface.copy(alpha = 0.94f))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.54f), RoundedCornerShape(20.dp))
+                .padding(5.dp)
         ) {
             // Индикатор следует за реальным смещением Pager, поэтому цвет
             // перетекает за пальцем и при свайпе, и при нажатии на вкладку.
@@ -1274,7 +1410,7 @@ private fun PhotoOrderScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf("⌂  Главная", "✨  ИИ-альбомы").forEachIndexed { index, label ->
+                listOf("⌂   Галерея", "✦   Умные альбомы").forEachIndexed { index, label ->
                     val active = pageProgress.roundToInt() == index
                     Box(
                         modifier = Modifier.weight(1f).fillMaxHeight()
@@ -1285,7 +1421,7 @@ private fun PhotoOrderScreen(
                             label,
                             color = if (active) Color.White else palette.muted,
                             fontSize = 12.sp,
-                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium
                         )
                     }
                 }
